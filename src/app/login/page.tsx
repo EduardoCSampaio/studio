@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from "firebase/firestore";
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/use-auth.tsx"
 import { useToast } from '@/hooks/use-toast';
 import { testUsers, User } from '@/lib/data';
 
@@ -33,7 +34,16 @@ export default function LoginPage() {
         // If login fails because user doesn't exist, create it.
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
             try {
-                await createUserWithEmailAndPassword(auth, testUser.email, '123456');
+                const userCredential = await createUserWithEmailAndPassword(auth, testUser.email, '123456');
+                const firebaseUser = userCredential.user;
+
+                // Also create a document in Firestore for this new user
+                await setDoc(doc(db, "users", firebaseUser.uid), {
+                    name: testUser.name,
+                    email: testUser.email,
+                    role: testUser.role,
+                });
+                
                 toast({ title: `Conta de teste criada para ${testUser.name}. Bem-vindo!` });
                 router.push("/dashboard");
             } catch (signupError: any) {

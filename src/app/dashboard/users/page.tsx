@@ -21,13 +21,28 @@ import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
 import { type User } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
+import { collection, onSnapshot } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export default function UsersPage() {
   const [users, setUsers] = React.useState<User[]>([])
 
   React.useEffect(() => {
-    // In a real app, this would be fetched from Firestore.
-    setUsers([])
+    const usersCol = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersCol, (snapshot) => {
+        const userList = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                email: data.email,
+                role: data.role,
+            } as User;
+        });
+        setUsers(userList);
+    });
+
+    return () => unsubscribe();
   }, [])
 
   return (
@@ -73,7 +88,7 @@ export default function UsersPage() {
               {users.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center">
-                    No users found.
+                    No users found. Log in with different profiles to populate this list.
                   </TableCell>
                 </TableRow>
               )}
@@ -84,5 +99,3 @@ export default function UsersPage() {
     </div>
   )
 }
-
-    
