@@ -27,7 +27,9 @@ export default function LoginPage() {
   React.useEffect(() => {
     // If user is already logged in, redirect to the appropriate dashboard.
     if (user) {
-      if (user.role === 'Garçom' || user.role === 'Portaria') {
+      if (user.role === 'Garçom') {
+        router.push("/dashboard/waiter");
+      } else if (user.role === 'Portaria') {
         router.push("/dashboard/customers");
       } else if (user.role === 'Bar') {
           router.push("/dashboard/bar");

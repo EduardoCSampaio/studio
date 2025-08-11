@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Package, Square, Users, CircleUser, LogOut, Beer, CookingPot } from "lucide-react"
+import { LayoutDashboard, Package, Square, Users, CircleUser, LogOut, Beer, CookingPot, PlusSquare } from "lucide-react"
 
 import {
   Sidebar,
@@ -61,11 +61,25 @@ function DashboardSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
           )}
+           {userCan(['Garçom']) && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/dashboard/waiter"}
+                tooltip="Lançar Pedido"
+              >
+                <Link href="/dashboard/waiter">
+                  <PlusSquare />
+                  <span>Lançar Pedido</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+           )}
           {userCan(['Chefe']) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith("/dashboard/tables")}
+                isActive={pathname.startsWith("/dashboard/tables") && pathname !== '/dashboard/tables/[tableId]'}
                 tooltip="Mesas"
               >
                 <Link href="/dashboard/tables">
@@ -89,7 +103,7 @@ function DashboardSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
            )}
-           {userCan(['Chefe', 'Portaria', 'Garçom']) && (
+           {userCan(['Chefe', 'Portaria']) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
