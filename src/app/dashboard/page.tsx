@@ -32,22 +32,28 @@ import { Printer, CheckCircle, DollarSign, Users, CreditCard, Activity } from "l
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 
-const salesData = [
-  { name: "Jan", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Feb", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Mar", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Apr", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "May", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Jun", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Jul", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Aug", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Sep", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Oct", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Nov", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Dec", total: Math.floor(Math.random() * 5000) + 1000 },
+const initialSalesData = [
+  { name: "Jan", total: 0 },
+  { name: "Feb", total: 0 },
+  { name: "Mar", total: 0 },
+  { name: "Apr", total: 0 },
+  { name: "May", total: 0 },
+  { name: "Jun", total: 0 },
+  { name: "Jul", total: 0 },
+  { name: "Aug", total: 0 },
+  { name: "Sep", total: 0 },
+  { name: "Oct", total: 0 },
+  { name: "Nov", total: 0 },
+  { name: "Dec", total: 0 },
 ]
 
 function OrderReceipt({ order }: { order: Order }) {
+  const [receiptDate, setReceiptDate] = React.useState<Date | null>(null);
+
+  React.useEffect(() => {
+    setReceiptDate(new Date());
+  }, []);
+
   return (
     <div className="p-6 bg-white text-black font-sans">
       <div className="text-center mb-6">
@@ -57,7 +63,7 @@ function OrderReceipt({ order }: { order: Order }) {
       </div>
       <div className="mb-4">
         <p><span className="font-semibold">Table:</span> {order.tableId}</p>
-        <p><span className="font-semibold">Date:</span> {new Date().toLocaleString()}</p>
+        <p><span className="font-semibold">Date:</span> {receiptDate ? receiptDate.toLocaleString() : '...'}</p>
       </div>
       <div className="border-t border-b border-gray-300 py-2 mb-4">
         <div className="flex justify-between font-semibold">
@@ -84,10 +90,17 @@ function OrderReceipt({ order }: { order: Order }) {
 
 export default function DashboardPage() {
   const [orders, setOrders] = React.useState<Order[]>(initialOrders)
+  const [salesData, setSalesData] = React.useState(initialSalesData);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [printableOrder, setPrintableOrder] = React.useState<Order | null>(null);
   const { toast } = useToast()
+
+  React.useEffect(() => {
+    setSalesData(
+      initialSalesData.map(d => ({...d, total: Math.floor(Math.random() * 5000) + 1000}))
+    )
+  }, [])
 
   const handleOpenDialog = (order: Order) => {
     setSelectedOrder(order)

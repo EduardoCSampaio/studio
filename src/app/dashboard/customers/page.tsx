@@ -39,13 +39,17 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = React.useState<Customer[]>(initialCustomers)
+  const [customers, setCustomers] = React.useState<Customer[]>([])
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [newCustomerName, setNewCustomerName] = React.useState("")
   const [newCustomerCpf, setNewCustomerCpf] = React.useState("")
   const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState<Date | undefined>()
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
+
+  React.useEffect(() => {
+    setCustomers(initialCustomers);
+  }, []);
 
   const handleAddCustomer = () => {
     if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
