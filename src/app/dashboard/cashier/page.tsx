@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { type Order, type Customer, type OrderItem } from "@/lib/data"
-import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore"
+import { collection, query, where, getDocs, writeBatch, doc, updateDoc, collectionGroup } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { XCircle } from "lucide-react"
 
@@ -70,18 +70,12 @@ export default function CashierPage() {
       const qCustomer = query(customersRef, where("wristbandId", "==", parseInt(comandaId, 10)))
       const customerSnapshot = await getDocs(qCustomer)
 
-      if (customerSnapshot.empty) {
-        toast({
-          variant: "destructive",
-          title: "Comanda não encontrada",
-          description: `Nenhum cliente encontrado com a comanda #${comandaId}.`,
-        })
-        setIsLoading(false)
-        return
+      let customerData: Customer | null = null;
+      if (!customerSnapshot.empty) {
+        customerData = { id: customerSnapshot.docs[0].id, ...customerSnapshot.docs[0].data() } as Customer
+        setCustomer(customerData)
       }
-      const customerData = { id: customerSnapshot.docs[0].id, ...customerSnapshot.docs[0].data() } as Customer
-      setCustomer(customerData)
-
+      
       // Find all orders for that comanda
       const ordersRef = collection(db, "orders")
       const qOrders = query(ordersRef, where("comandaId", "==", comandaId))
@@ -91,11 +85,13 @@ export default function CashierPage() {
       const pendingOrders = allOrdersForComanda.filter(order => order.status !== "Completed");
 
       if (pendingOrders.length === 0) {
+        const message = customerData 
+            ? `O cliente ${customerData.name} não possui pedidos pendentes para fechar.`
+            : `A comanda #${comandaId} não possui pedidos pendentes ou não foi encontrada.`
         toast({
           title: "Nenhum pedido pendente",
-          description: `O cliente ${customerData.name} não possui pedidos pendentes para fechar.`,
+          description: message,
         })
-        // Still show customer info, but with no orders
         setOrders([]);
         setIsLoading(false)
         return
@@ -168,9 +164,12 @@ export default function CashierPage() {
         });
 
         // Recalculate the total, ignoring cancelled items
-        const updatedTotal = updatedItems
+        const subtotal = updatedItems
             .filter(item => item.status !== 'Cancelled')
             .reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        
+        const serviceFee = subtotal * 0.10;
+        const updatedTotal = subtotal + serviceFee;
         
         const orderRef = doc(db, "orders", orderId);
         await updateDoc(orderRef, {
@@ -205,10 +204,10 @@ export default function CashierPage() {
 
   const calculateSubtotal = () => 
     orders.reduce((acc, order) => {
-        const orderTotal = order.items
+        const orderSubtotal = order.items
             .filter(item => item.status !== 'Cancelled')
             .reduce((orderAcc, item) => orderAcc + (item.price * item.quantity), 0);
-        return acc + orderTotal;
+        return acc + orderSubtotal;
     }, 0);
 
   const subtotal = calculateSubtotal();
@@ -257,13 +256,15 @@ export default function CashierPage() {
         </CardContent>
       </Card>
 
-      {customer && (
+      {(customer || orders.length > 0) && (
         <Card>
           <CardHeader>
-            <CardTitle>Comanda #{comandaId} - {customer.name}</CardTitle>
-            <CardDescription>
-              CPF: {customer.cpf} | Check-in: {new Date(customer.checkIn).toLocaleString()}
-            </CardDescription>
+            <CardTitle>Comanda #{comandaId} {customer && `- ${customer.name}`}</CardTitle>
+            {customer && (
+                <CardDescription>
+                CPF: {customer.cpf} | Check-in: {new Date(customer.checkIn).toLocaleString()}
+                </CardDescription>
+            )}
           </CardHeader>
           <CardContent>
             {orders.length > 0 ? (
@@ -346,3 +347,5 @@ export default function CashierPage() {
     </>
   )
 }
+
+    

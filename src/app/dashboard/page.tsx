@@ -91,7 +91,7 @@ export default function DashboardPage() {
   const updateSalesChart = (allOrders: Order[]) => {
       const monthlySales = [...initialSalesData];
       allOrders.forEach(order => {
-          if (order.createdAt) {
+          if (order.createdAt && order.status === 'Completed') {
               // Firebase timestamps can be converted to JS Date objects
               const orderDate = (order.createdAt as Timestamp).toDate();
               const month = orderDate.getMonth(); // 0 = Jan, 1 = Feb, etc.
@@ -127,6 +127,16 @@ export default function DashboardPage() {
         })
     }
   }
+  
+  const getBadgeVariant = (status: Order['status']) => {
+      switch (status) {
+          case 'Completed': return 'secondary';
+          case 'Pending': return 'default';
+          case 'Cancelled': return 'destructive';
+          case 'In Progress': return 'outline';
+          default: return 'outline';
+      }
+  }
 
   const renderOrderRow = (order: Order) => (
     <TableRow key={order.id} className="cursor-pointer" onClick={() => handleOpenDialog(order)}>
@@ -141,7 +151,7 @@ export default function DashboardPage() {
       </TableCell>
       <TableCell className="text-right">R${order.total.toFixed(2)}</TableCell>
       <TableCell>
-        <Badge variant={order.status === 'Completed' ? 'secondary' : order.status === 'Pending' ? 'default' : 'outline'}>
+        <Badge variant={getBadgeVariant(order.status)}>
           {order.status}
         </Badge>
       </TableCell>
@@ -158,8 +168,8 @@ export default function DashboardPage() {
   const allOrders = orders.sort((a, b) => (b.createdAt as Timestamp).seconds - (a.createdAt as Timestamp).seconds);
   
   const totalRevenue = orders.reduce((acc, order) => order.status === 'Completed' ? acc + order.total : acc, 0);
-  const completedOrders = orders.filter(order => order.status === 'Completed').length;
-  const pendingOrders = orders.filter(order => order.status !== 'Completed').length;
+  const completedOrdersCount = orders.filter(order => order.status === 'Completed').length;
+  const pendingOrdersCount = orders.filter(order => order.status !== 'Completed').length;
   const recentSales = orders.filter(o => o.status === 'Completed').slice(0, 5);
 
 
@@ -192,7 +202,7 @@ export default function DashboardPage() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+{completedOrders}</div>
+              <div className="text-2xl font-bold">+{completedOrdersCount}</div>
               <p className="text-xs text-muted-foreground">Total de pedidos finalizados</p>
             </CardContent>
           </Card>
@@ -202,7 +212,7 @@ export default function DashboardPage() {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingOrders}</div>
+              <div className="text-2xl font-bold">{pendingOrdersCount}</div>
               <p className="text-xs text-muted-foreground">Pedidos na fila para preparo</p>
             </CardContent>
           </Card>
@@ -249,7 +259,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Vendas Recentes</CardTitle>
               <CardDescription>
-                Você concluiu {completedOrders} vendas hoje.
+                Você concluiu {completedOrdersCount} vendas hoje.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -402,3 +412,5 @@ export default function DashboardPage() {
     </>
   )
 }
+
+    

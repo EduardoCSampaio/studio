@@ -50,12 +50,15 @@ export default function ReportsPage() {
   React.useEffect(() => {
     const closingsQuery = query(collection(db, "dailyClosings"), orderBy("date", "desc"));
     const unsubscribe = onSnapshot(closingsQuery, (snapshot) => {
-        const closingsList = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            date: (doc.data().date as Timestamp).toDate(),
-            closedAt: (doc.data().closedAt as Timestamp).toDate(),
-        })) as DailyClosing[];
+        const closingsList = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: (data.date as Timestamp).toDate(),
+                closedAt: data.closedAt ? (data.closedAt as Timestamp).toDate() : new Date(),
+            } as DailyClosing;
+        });
         setClosings(closingsList);
 
         if (closingsList.length > 0) {
@@ -112,14 +115,16 @@ export default function ReportsPage() {
 
         // --- 2. Calculate metrics ---
         const totalRevenue = completedOrders.reduce((acc, order) => acc + order.total, 0);
-        const totalServiceFee = completedOrders.reduce((acc, order) => acc + (order.total * 0.10), 0); // Assuming 10% on completed orders total
+        const serviceFeePercentage = 0.10; // 10%
+        const subtotalOfCompleted = completedOrders.reduce((acc, order) => acc + (order.total / (1 + serviceFeePercentage)), 0);
+        const totalServiceFee = totalRevenue - subtotalOfCompleted;
+
         const cancelledItems = allOrders.flatMap(order => order.items.filter(item => item.status === "Cancelled")) as OrderItem[];
         const totalCancelledValue = cancelledItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
         // --- 3. Create closing document ---
-        const closingDoc: Omit<DailyClosing, 'id'> = {
+        const closingDoc: Omit<DailyClosing, 'id' | 'closedAt'> = {
             date: startOfDayTimestamp,
-            closedAt: serverTimestamp(),
             closedByUserId: user.id,
             closedByUserName: user.name,
             totalRevenue: totalRevenue,
@@ -130,7 +135,10 @@ export default function ReportsPage() {
             totalCancelledValue: totalCancelledValue,
         };
 
-        await addDoc(collection(db, "dailyClosings"), closingDoc);
+        await addDoc(collection(db, "dailyClosings"), {
+            ...closingDoc,
+            closedAt: serverTimestamp()
+        });
         
         toast({
             title: "Caixa Fechado com Sucesso!",
@@ -312,3 +320,5 @@ export default function ReportsPage() {
     </>
   )
 }
+
+    
