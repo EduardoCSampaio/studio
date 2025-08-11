@@ -1,6 +1,9 @@
 
 "use client"
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from '@/lib/firebase';
 import {
   Card,
   CardContent,
@@ -11,78 +14,46 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
-import { users } from "@/lib/data"
 import { useAuth } from "@/hooks/use-auth"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-function LoginAs({ onLogin }: { onLogin: () => void }) {
-  const { login } = useAuth()
-
-  const handleLogin = (userId: string) => {
-    login(userId)
-    onLogin()
-  }
-
-  return (
-    <div className="space-y-4">
-      {users.map((user) => (
-        <button
-          key={user.id}
-          onClick={() => handleLogin(user.id)}
-          className="w-full text-left p-3 rounded-md hover:bg-muted transition-colors flex items-center gap-4 border"
-        >
-          <Avatar>
-            <AvatarImage src={`https://i.pravatar.cc/40?u=${user.id}`} alt={user.name} />
-            <AvatarFallback>{user.name[0]}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold">{user.name}</p>
-            <p className="text-sm text-muted-foreground">{user.role}</p>
-          </div>
-        </button>
-      ))}
-    </div>
-  )
-}
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { user, logout } = useAuth()
+  const router = useRouter();
+  const { user, logout, loading } = useAuth();
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const { toast } = useToast();
+
+  const handleLogin = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "Login successful!" });
+      router.push("/dashboard");
+    } catch (error: any) {
+        // Try to sign up if login fails (for demo purposes)
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            toast({ title: "Welcome! Account created." });
+            router.push("/dashboard");
+        } catch (signupError: any) {
+             toast({
+                variant: "destructive",
+                title: "Authentication Failed",
+                description: signupError.message,
+            });
+        }
+    }
+  };
+
+  if (loading) {
+      return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
 
   if (user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <Logo />
-            </div>
-            <CardTitle className="text-2xl font-bold">
-              Bem-vindo, {user.name.split(" ")[0]}!
-            </CardTitle>
-            <CardDescription>
-              Você já está logado como {user.role}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center">
-             <Avatar className="h-24 w-24 mb-4">
-                <AvatarImage src={`https://i.pravatar.cc/120?u=${user.id}`} alt={user.name} />
-                <AvatarFallback>{user.name[0]}</AvatarFallback>
-            </Avatar>
-            <p className="text-lg font-semibold">{user.name}</p>
-            <p className="text-muted-foreground">{user.email}</p>
-          </CardContent>
-          <CardFooter className="flex-col gap-2">
-            <Button className="w-full" onClick={() => router.push("/dashboard")}>
-              Ir para o Dashboard
-            </Button>
-            <Button className="w-full" variant="outline" onClick={logout}>
-              Sair (Log out)
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
+    router.push("/dashboard");
+    return null;
   }
 
   return (
@@ -92,14 +63,26 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo />
           </div>
-          <CardTitle className="text-2xl font-bold">Entrar Como</CardTitle>
+          <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
           <CardDescription>
-            Selecione um usuário para continuar.
+            Use seu email e senha para continuar.
+            <br/>
+            <small className="text-xs">Ex: garcom@restotrack.com / 123456</small>
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <LoginAs onLogin={() => router.push("/dashboard")} />
+        <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
         </CardContent>
+        <CardFooter>
+          <Button className="w-full" onClick={handleLogin}>Entrar</Button>
+        </CardFooter>
       </Card>
     </div>
   )

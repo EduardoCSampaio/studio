@@ -30,7 +30,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PlusCircle } from "lucide-react"
-import { customers as initialCustomers, type Customer } from "@/lib/data"
+import { type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
@@ -43,20 +43,17 @@ export default function CustomersPage() {
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [newCustomerName, setNewCustomerName] = React.useState("")
   const [newCustomerCpf, setNewCustomerCpf] = React.useState("")
-  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState("")
+  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState<Date | undefined>()
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
 
   React.useEffect(() => {
-    // This needs to be in a useEffect to avoid hydration errors
-    setCustomers(initialCustomers.map(c => ({...c, checkIn: new Date(c.checkIn)})));
+    // In a real app, you would fetch this data from Firestore.
+    setCustomers([]); 
   }, []);
 
   const handleAddCustomer = () => {
-    const dateParts = newCustomerBirthDate.split('/');
-    const birthDate = dateParts.length === 3 ? new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`) : new Date('');
-
-    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate || isNaN(birthDate.getTime())) {
+    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
       toast({
         variant: "destructive",
         title: "Erro ao adicionar cliente",
@@ -69,11 +66,12 @@ export default function CustomersPage() {
       id: `cust${customers.length + 1}`,
       name: newCustomerName,
       cpf: newCustomerCpf,
-      birthDate: birthDate,
+      birthDate: newCustomerBirthDate,
       wristbandId: parseInt(newWristbandId, 10),
       checkIn: new Date(),
     }
-
+    
+    // In a real app, you would save this to Firestore.
     setCustomers(prevCustomers => [...prevCustomers, newCustomer])
     
     toast({
@@ -84,7 +82,7 @@ export default function CustomersPage() {
     // Reset form and close dialog
     setNewCustomerName("")
     setNewCustomerCpf("")
-    setNewCustomerBirthDate("")
+    setNewCustomerBirthDate(undefined)
     setNewWristbandId("")
     setDialogOpen(false)
   }
@@ -132,6 +130,13 @@ export default function CustomersPage() {
                     <TableCell>{format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss')}</TableCell>
                   </TableRow>
                 ))}
+                 {customers.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">
+                            Nenhum cliente cadastrado.
+                        </TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -172,16 +177,31 @@ export default function CustomersPage() {
               />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="birthDate" className="text-right">
+               <Label htmlFor="birthDate" className="text-right">
                 Nascimento
               </Label>
-              <Input
-                id="birthDate"
-                value={newCustomerBirthDate}
-                onChange={(e) => setNewCustomerBirthDate(e.target.value)}
-                className="col-span-3"
-                placeholder="Ex: DD/MM/AAAA"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "col-span-3 justify-start text-left font-normal",
+                      !newCustomerBirthDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {newCustomerBirthDate ? format(newCustomerBirthDate, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={newCustomerBirthDate}
+                    onSelect={setNewCustomerBirthDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="wristbandId" className="text-right">

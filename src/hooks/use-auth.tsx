@@ -3,51 +3,65 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { users, type User } from '@/lib/data';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { User, UserRole } from '@/lib/data';
 
 interface AuthContextType {
   user: User | null;
-  login: (userId: string) => void;
-  logout: () => void;
+  loading: boolean;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'restotrack-auth-user';
+// This is a simplified simulation. In a real app, you'd fetch this from Firestore
+// based on the FirebaseUser's UID.
+const userRoles: Record<string, UserRole> = {
+  'chefe@restotrack.com': 'Chefe',
+  'portaria@restotrack.com': 'Portaria',
+  'garcom@restotrack.com': 'Garçom',
+  'bar@restotrack.com': 'Bar',
+  'financeiro@restotrack.com': 'Financeiro',
+};
+
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
   React.useEffect(() => {
-    try {
-        const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    } catch (error) {
-        console.error("Failed to parse user from localStorage", error);
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // This is a simplified mapping. In a real app, you'd fetch user profile from Firestore.
+        const role = firebaseUser.email ? userRoles[firebaseUser.email] || 'Garçom' : 'Garçom';
+        setUser({
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email || 'Usuário',
+          email: firebaseUser.email || '',
+          role: role,
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (userId: string) => {
-    const userToLogin = users.find(u => u.id === userId);
-    if (userToLogin) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userToLogin));
-      setUser(userToLogin);
-      router.push('/dashboard');
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+  const logout = async () => {
+    setLoading(true);
+    await auth.signOut();
     setUser(null);
     router.push('/login');
+    setLoading(false);
   };
 
+  // We don't provide a login function as it's handled by Firebase UI or custom logic
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

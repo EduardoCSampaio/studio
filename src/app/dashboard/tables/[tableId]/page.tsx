@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import { use } from "react"
 import { useRouter } from "next/navigation"
 import {
   Card,
@@ -21,20 +22,26 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Trash2 } from "lucide-react"
-import { products as allProducts, orders as allOrders, type OrderItem, type Product, type Order, tables } from "@/lib/data"
+import { type OrderItem, type Product } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
 
 export default function TableOrderPage({ params }: { params: { tableId: string } }) {
-  const { tableId } = params;
+  const { tableId } = use(Promise.resolve(params));
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
   
-  const existingOrder = allOrders.find(o => o.tableId.toString() === tableId && o.status !== 'Completed');
-  
-  const [orderItems, setOrderItems] = React.useState<OrderItem[]>(existingOrder ? existingOrder.items : [])
+  const [orderItems, setOrderItems] = React.useState<OrderItem[]>([])
+  const [allProducts, setAllProducts] = React.useState<Product[]>([]);
+
+  React.useEffect(() => {
+      // In a real app, you would fetch products and existing order from Firestore.
+      setAllProducts([]);
+      setOrderItems([]);
+  }, [tableId]);
+
 
   const handleAddItem = (product: Product) => {
     setOrderItems(prevItems => {
@@ -87,31 +94,15 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
       })
       return
     }
-
-    if (existingOrder) {
-      existingOrder.items = orderItems;
-      existingOrder.total = calculateTotal();
-      existingOrder.status = 'In Progress';
-      existingOrder.waiterId = user.id;
-      existingOrder.waiterName = user.name;
-    } else {
-      const newOrder: Order = {
-        id: `ord${allOrders.length + 1}`,
-        tableId: parseInt(tableId, 10),
+    
+    // In a real app, you would save this order to Firestore.
+    console.log({
+        tableId,
         waiterId: user.id,
         waiterName: user.name,
         items: orderItems,
-        total: calculateTotal(),
-        status: 'Pending',
-      }
-      allOrders.push(newOrder);
-      
-      const table = tables.find(t => t.id.toString() === tableId);
-      if (table) {
-        table.status = 'Occupied';
-        table.orderId = newOrder.id;
-      }
-    }
+        total: calculateTotal()
+    });
 
     toast({
       title: "Pedido Enviado",
@@ -143,6 +134,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
                       <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
                   </Button>
                 ))}
+                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível.</p>}
               </div>
                <h3 className="text-lg font-semibold mb-2">Bar</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -152,6 +144,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
                       <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
                   </Button>
                 ))}
+                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível.</p>}
               </div>
           </CardContent>
         </Card>

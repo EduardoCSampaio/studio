@@ -37,7 +37,7 @@ function DashboardSidebar() {
     return name.substring(0, 2)
   }
 
-  const userCan = (roles: string[]) => roles.includes(user.role)
+  const userCan = (roles: string[]) => user.role && roles.includes(user.role)
 
   return (
     <Sidebar>
@@ -158,9 +158,13 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const { loading } = useAuth();
+  
+  if (loading) {
+      return <div className="flex items-center justify-center min-h-screen">Carregando...</div>
+  }
 
   return (
-    <AuthProvider>
       <SidebarProvider>
         <div className="flex min-h-screen">
           <DashboardSidebar />
@@ -173,6 +177,5 @@ export default function DashboardLayout({
           </div>
         </div>
       </SidebarProvider>
-    </AuthProvider>
   )
 }
