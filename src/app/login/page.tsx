@@ -68,7 +68,7 @@ export default function LoginPage() {
                 toast({ title: `Conta de teste criada para ${testUser.name}. Bem-vindo!` });
                  // Redirect logic is now in useEffect
             } catch (signupError: any) {
-                 toast({
+                toast({
                     variant: "destructive",
                     title: "Falha na criação do usuário",
                     description: signupError.message,

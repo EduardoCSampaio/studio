@@ -49,30 +49,30 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-headline font-bold text-foreground">Users</h1>
+          <h1 className="text-4xl font-headline font-bold text-foreground">Usuários</h1>
           <p className="text-muted-foreground">
-            Manage your restaurant's staff members.
+            Gerencie os funcionários do seu restaurante.
           </p>
         </div>
         <Button disabled>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add User
+          Adicionar Usuário
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>User List</CardTitle>
+          <CardTitle>Lista de Usuários</CardTitle>
           <CardDescription>
-            A list of all staff members and their roles.
+            Uma lista de todos os funcionários e seus cargos.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Cargo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -88,7 +88,7 @@ export default function UsersPage() {
               {users.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center">
-                    No users found. Log in with different profiles to populate this list.
+                    Nenhum usuário encontrado. Faça login com diferentes perfis para popular esta lista.
                   </TableCell>
                 </TableRow>
               )}

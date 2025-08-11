@@ -34,13 +34,13 @@ export default function TablesPage() {
     return () => unsubscribe();
   }, [])
 
-  const getStatusVariant = (status: 'Available' | 'Occupied' | 'Reserved'): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  const getStatusVariant = (status: 'Disponível' | 'Ocupada' | 'Reservada'): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (status) {
-      case 'Available':
+      case 'Disponível':
         return 'secondary'
-      case 'Occupied':
+      case 'Ocupada':
         return 'default'
-      case 'Reserved':
+      case 'Reservada':
         return 'outline'
       default:
         return 'secondary'
@@ -68,9 +68,9 @@ export default function TablesPage() {
                 <div className="text-2xl font-bold font-headline">{table.id}</div>
                 <div className="flex justify-between items-center mt-2">
                   <Badge variant={getStatusVariant(table.status)}>{table.status}</Badge>
-                  {table.status === 'Occupied' && (
+                  {table.status === 'Ocupada' && (
                     <p className="text-xs text-muted-foreground">
-                      Pedido #{table.orderId}
+                      Comanda #{table.orderId}
                     </p>
                   )}
                 </div>

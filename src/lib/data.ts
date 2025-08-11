@@ -8,7 +8,7 @@ export type Product = {
 
 export type Table = {
   id: number;
-  status: 'Available' | 'Occupied' | 'Reserved';
+  status: 'Disponível' | 'Ocupada' | 'Reservada';
   orderId?: string;
 };
 
@@ -18,7 +18,7 @@ export type OrderItem = {
   price: number;
   quantity: number;
   department: 'Cozinha' | 'Bar';
-  status?: 'Cancelled';
+  status?: 'Cancelado';
 };
 
 export type Order = {
@@ -29,7 +29,7 @@ export type Order = {
   waiterName: string;
   items: OrderItem[];
   total: number;
-  status: 'Pending' | 'In Progress' | 'Completed';
+  status: 'Pendente' | 'Em Preparo' | 'Concluído';
   customerId?: string; 
   customerName?: string;
   createdAt: any; // Firestore server timestamp
@@ -64,5 +64,3 @@ export const testUsers: Omit<User, 'id'>[] = [
     { name: 'Cozinha', role: 'Cozinha', email: 'cozinha@namata.com' },
     { name: 'Caixa', role: 'Caixa', email: 'caixa@namata.com' },
 ];
-
-    
