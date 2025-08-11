@@ -31,9 +31,16 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { type Order, type Customer } from "@/lib/data"
-import { collection, query, where, getDocs, writeBatch, doc } from "firebase/firestore"
+import { type Order, type Customer, type OrderItem } from "@/lib/data"
+import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { XCircle } from "lucide-react"
+
+type ItemWithOrderId = OrderItem & { 
+    orderId: string;
+    originalIndex: number;
+};
+
 
 export default function CashierPage() {
   const { toast } = useToast()
@@ -115,8 +122,11 @@ export default function CashierPage() {
     const batch = writeBatch(db);
 
     orders.forEach(order => {
-        const orderRef = doc(db, "orders", order.id);
-        batch.update(orderRef, { status: "Completed" });
+        // Only update orders that still have items.
+        if (order.items.length > 0) {
+            const orderRef = doc(db, "orders", order.id);
+            batch.update(orderRef, { status: "Completed" });
+        }
     });
 
     try {
@@ -142,12 +152,68 @@ export default function CashierPage() {
     }
   };
 
+  const handleCancelItem = async (itemToCancel: ItemWithOrderId) => {
+    const { orderId, originalIndex } = itemToCancel;
+
+    setIsLoading(true);
+    try {
+        // Find the specific order in the local state
+        const orderToUpdate = orders.find(o => o.id === orderId);
+        if (!orderToUpdate) {
+            throw new Error("Pedido não encontrado no estado local.");
+        }
+
+        // Filter out the item to be cancelled
+        const updatedItems = orderToUpdate.items.filter((_, index) => index !== originalIndex);
+        
+        // Recalculate the total for that specific order
+        const updatedTotal = updatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        
+        // Update the order in Firestore
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, {
+            items: updatedItems,
+            total: updatedTotal,
+        });
+
+        // Update the local state to reflect the change immediately
+        setOrders(prevOrders => prevOrders.map(order => 
+            order.id === orderId 
+                ? { ...order, items: updatedItems, total: updatedTotal } 
+                : order
+        ).filter(order => order.items.length > 0)); // Also remove order if it becomes empty
+
+        toast({
+            title: "Item Cancelado",
+            description: `${itemToCancel.name} foi removido da comanda.`,
+        });
+
+    } catch (error) {
+        console.error("Error cancelling item:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Cancelar",
+            description: "Não foi possível remover o item do pedido.",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+
   const calculateSubtotal = () => orders.reduce((acc, order) => acc + order.total, 0);
   const subtotal = calculateSubtotal();
   const serviceFee = subtotal * 0.10;
   const total = subtotal + serviceFee;
 
-  const allItems = orders.flatMap(order => order.items);
+  const allItems: ItemWithOrderId[] = orders.flatMap(order => 
+    order.items.map((item, index) => ({ 
+        ...item, 
+        orderId: order.id,
+        originalIndex: index, // Keep track of the item's original position in its order's array
+    }))
+  );
+
 
   return (
     <>
@@ -200,15 +266,22 @@ export default function CashierPage() {
                             <TableHead>Qtd.</TableHead>
                             <TableHead className="text-right">Preço Unit.</TableHead>
                             <TableHead className="text-right">Total Item</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {allItems.map((item, index) => (
-                             <TableRow key={`${item.productId}-${index}`}>
+                             <TableRow key={`${item.orderId}-${item.productId}-${index}`}>
                                 <TableCell>{item.name}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
                                 <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
                                 <TableCell className="text-right">R$ {(item.price * item.quantity).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => handleCancelItem(item)} disabled={isLoading}>
+                                        <XCircle className="h-4 w-4 text-destructive" />
+                                        <span className="sr-only">Cancelar item</span>
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
