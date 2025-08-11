@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label"
 import { PlusCircle } from "lucide-react"
 import { type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/use-auth"
 import { format } from "date-fns"
 import { collection, addDoc, onSnapshot, query, where, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -45,6 +46,7 @@ export default function CustomersPage() {
   const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState("")
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
+  const { user } = useAuth()
 
   React.useEffect(() => {
     const today = new Date();
@@ -118,6 +120,29 @@ export default function CustomersPage() {
         })
     }
   }
+  
+  const canLaunchOrder = user && ['Chefe', 'Garçom', 'Caixa'].includes(user.role);
+
+  const renderCellContent = (customer: Customer, field: keyof Customer | 'checkInFormatted') => {
+      let content;
+      if (field === 'checkInFormatted') {
+          content = format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss');
+      } else if (field === 'tableId') {
+          content = customer.tableId || 'N/A';
+      }
+      else {
+          content = customer[field as keyof Customer];
+      }
+
+      if (canLaunchOrder) {
+          return (
+               <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
+                  {content}
+              </Link>
+          )
+      }
+      return content;
+  }
 
   return (
     <>
@@ -138,7 +163,7 @@ export default function CustomersPage() {
           <CardHeader>
             <CardTitle>Comandas Abertas</CardTitle>
             <CardDescription>
-              Uma lista de todos os clientes que fizeram check-in hoje. Clique em um cliente para lançar um pedido.
+              Uma lista de todos os clientes que fizeram check-in hoje. {canLaunchOrder ? 'Clique em um cliente para lançar um pedido.' : ''}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -153,26 +178,18 @@ export default function CustomersPage() {
               </TableHeader>
               <TableBody>
                 {customers.map((customer) => (
-                  <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow key={customer.id} className={canLaunchOrder ? "cursor-pointer hover:bg-muted/50" : ""}>
                      <TableCell className="font-medium">
-                        <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
-                            {customer.name}
-                        </Link>
+                        {renderCellContent(customer, 'name')}
                      </TableCell>
                      <TableCell>
-                         <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
-                            {customer.wristbandId}
-                        </Link>
+                         {renderCellContent(customer, 'wristbandId')}
                     </TableCell>
                     <TableCell>
-                         <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
-                            {customer.tableId || 'N/A'}
-                        </Link>
+                         {renderCellContent(customer, 'tableId')}
                     </TableCell>
                     <TableCell>
-                         <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
-                            {format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss')}
-                        </Link>
+                         {renderCellContent(customer, 'checkInFormatted')}
                     </TableCell>
                   </TableRow>
                 ))}
