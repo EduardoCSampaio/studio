@@ -28,6 +28,8 @@ export type Order = {
   items: OrderItem[];
   total: number;
   status: 'Pending' | 'In Progress' | 'Completed';
+  // We might associate an order with a customer later
+  customerId?: string; 
 };
 
 export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Financeiro';
@@ -46,11 +48,8 @@ export type Customer = {
   birthDate: Date;
   wristbandId: number;
   checkIn: Date;
+  tableId?: number; // Each customer can be at a table
 };
 
 // Mock data will be replaced by Firestore data.
-export const users: User[] = [];
-export const customers: Customer[] = [];
-export const products: Product[] = [];
-export const tables: Table[] = [];
-export let orders: Order[] = [];
+// We keep the types but data will come from the database.

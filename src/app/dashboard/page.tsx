@@ -28,7 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { orders as initialOrders, type Order } from "@/lib/data"
+import { type Order } from "@/lib/data"
 import { Printer, CheckCircle, DollarSign, Users, CreditCard, Activity } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
@@ -100,7 +100,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     // This needs to be in a useEffect to avoid hydration errors
-    setOrders(initialOrders);
+    setOrders([]);
     setSalesData(
       initialSalesData.map(d => ({...d, total: Math.floor(Math.random() * 5000) + 1000}))
     )
@@ -386,3 +386,5 @@ export default function DashboardPage() {
     </>
   )
 }
+
+    

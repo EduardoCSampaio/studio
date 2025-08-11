@@ -1,4 +1,7 @@
 
+"use client"
+
+import * as React from "react"
 import {
   Card,
   CardContent,
@@ -16,10 +19,17 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
-import { users } from "@/lib/data"
+import { type User } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 
 export default function UsersPage() {
+  const [users, setUsers] = React.useState<User[]>([])
+
+  React.useEffect(() => {
+    // In a real app, this would be fetched from Firestore.
+    setUsers([])
+  }, [])
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -60,6 +70,13 @@ export default function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center">
+                    No users found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -67,3 +84,5 @@ export default function UsersPage() {
     </div>
   )
 }
+
+    

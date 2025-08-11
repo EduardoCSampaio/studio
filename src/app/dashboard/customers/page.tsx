@@ -49,10 +49,12 @@ export default function CustomersPage() {
 
   React.useEffect(() => {
     // In a real app, you would fetch this data from Firestore.
+    // For now, we keep it empty as we transition to the new logic.
     setCustomers([]); 
   }, []);
 
   const handleAddCustomer = () => {
+    // This logic will be updated to save to Firestore.
     if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
       toast({
         variant: "destructive",
@@ -63,7 +65,7 @@ export default function CustomersPage() {
     }
 
     const newCustomer: Customer = {
-      id: `cust${customers.length + 1}`,
+      id: `cust${Date.now()}`, // temp id
       name: newCustomerName,
       cpf: newCustomerCpf,
       birthDate: newCustomerBirthDate,
@@ -72,6 +74,7 @@ export default function CustomersPage() {
     }
     
     // In a real app, you would save this to Firestore.
+    // For now, we just add to the local state for demonstration.
     setCustomers(prevCustomers => [...prevCustomers, newCustomer])
     
     toast({
@@ -92,21 +95,21 @@ export default function CustomersPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-headline font-bold text-foreground">Clientes</h1>
+            <h1 className="text-4xl font-headline font-bold text-foreground">Comandas Individuais</h1>
             <p className="text-muted-foreground">
-              Gerencie o check-in de clientes e suas pulseiras.
+              Gerencie o check-in de clientes e suas comandas/pulseiras.
             </p>
           </div>
           <Button onClick={() => setDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Cliente
+            Nova Comanda
           </Button>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Clientes</CardTitle>
+            <CardTitle>Comandas Abertas</CardTitle>
             <CardDescription>
-              Uma lista de todos os clientes que fizeram check-in.
+              Uma lista de todos os clientes que fizeram check-in e possuem uma comanda ativa.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -114,9 +117,8 @@ export default function CustomersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>CPF</TableHead>
-                  <TableHead>Data de Nascimento</TableHead>
-                  <TableHead>ID da Pulseira</TableHead>
+                  <TableHead>ID da Comanda/Pulseira</TableHead>
+                  <TableHead>Mesa</TableHead>
                   <TableHead>Horário do Check-in</TableHead>
                 </TableRow>
               </TableHeader>
@@ -124,16 +126,15 @@ export default function CustomersPage() {
                 {customers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>{customer.cpf}</TableCell>
-                    <TableCell>{format(customer.birthDate, 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{customer.wristbandId}</TableCell>
+                    <TableCell>{customer.tableId || 'N/A'}</TableCell>
                     <TableCell>{format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss')}</TableCell>
                   </TableRow>
                 ))}
                  {customers.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">
-                            Nenhum cliente cadastrado.
+                        <TableCell colSpan={4} className="text-center h-24">
+                            Nenhuma comanda aberta.
                         </TableCell>
                     </TableRow>
                 )}
@@ -146,9 +147,9 @@ export default function CustomersPage() {
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Cliente</DialogTitle>
+            <DialogTitle>Nova Comanda</DialogTitle>
             <DialogDescription>
-              Cadastre um novo cliente e associe a uma pulseira.
+              Cadastre um novo cliente e associe a uma comanda/pulseira.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -205,7 +206,7 @@ export default function CustomersPage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="wristbandId" className="text-right">
-                Pulseira
+                Comanda/Pulseira
               </Label>
               <Input
                 id="wristbandId"
