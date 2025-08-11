@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -29,12 +29,16 @@ import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp
 import { db } from "@/lib/firebase"
 
 
-export default function OrderPage({ params }: { params: { tableId: string } }) {
-  // The param is now a wristbandId, but we keep the name for route consistency
-  const { tableId: wristbandId } = params;
+export default function OrderPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
+
+  // The param is now a wristbandId, but we keep the name for route consistency
+  const wristbandId = params.tableId as string;
+  const tableIdFromQuery = searchParams.get('tableId');
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>([])
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
@@ -53,27 +57,26 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
       setAllProducts(productList);
 
       // Fetch the customer data using the wristbandId
-      const customersRef = collection(db, "customers");
-      const q = query(customersRef, where("wristbandId", "==", parseInt(wristbandId, 10)));
-      const querySnapshot = await getDocsFromQuery(q);
+      if (wristbandId) {
+          const customersRef = collection(db, "customers");
+          const q = query(customersRef, where("wristbandId", "==", parseInt(wristbandId, 10)));
+          const querySnapshot = await getDocsFromQuery(q);
 
-      if (!querySnapshot.empty) {
-        const customerDoc = querySnapshot.docs[0];
-        const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
-        setCustomer(customerData);
-        setPageTitle(`Comanda #${wristbandId} - ${customerData.name}`);
-      } else {
-        // Handle case where wristbandId is not found or is a table ID
-        setPageTitle(`Detalhes da Mesa/Comanda #${wristbandId}`);
+          if (!querySnapshot.empty) {
+            const customerDoc = querySnapshot.docs[0];
+            const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
+            setCustomer(customerData);
+            setPageTitle(`Comanda #${wristbandId} - ${customerData.name}`);
+          } else {
+            setPageTitle(`Detalhes da Comanda #${wristbandId}`);
+          }
       }
       
       // Here you would also fetch any existing order items for this comanda
       setOrderItems([]);
     }
 
-    if(wristbandId) {
-      fetchData();
-    }
+    fetchData();
   }, [wristbandId]);
 
 
@@ -150,7 +153,7 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
           total: calculateTotal(),
           status: 'Pending',
           createdAt: serverTimestamp(),
-          tableId: customer?.tableId || null,
+          tableId: tableIdFromQuery ? parseInt(tableIdFromQuery, 10) : customer?.tableId || null,
       };
 
       await addDoc(collection(db, "orders"), orderData);
@@ -160,7 +163,12 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
         description: `O pedido para a comanda ${wristbandId} foi enviado.`,
       })
 
-      router.push("/dashboard/customers");
+      // Redirect based on user role
+      if (user.role === 'Garçom') {
+          router.push("/dashboard/waiter");
+      } else {
+          router.push("/dashboard/customers");
+      }
     } catch(error) {
         console.error("Error sending order: ", error);
         toast({
@@ -271,5 +279,3 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
     </div>
   )
 }
-
-    

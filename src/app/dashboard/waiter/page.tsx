@@ -14,14 +14,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export default function WaiterPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [comandaId, setComandaId] = React.useState("")
   const [tableId, setTableId] = React.useState("")
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleStartOrder = () => {
+  const handleStartOrder = async () => {
     if (!comandaId) {
       toast({
         variant: "destructive",
@@ -30,8 +33,7 @@ export default function WaiterPage() {
       })
       return
     }
-    // A mesa pode ser opcional, dependendo da regra de negócio
-    if (!tableId) {
+     if (!tableId) {
         toast({
           variant: "destructive",
           title: "Campo Obrigatório",
@@ -40,8 +42,24 @@ export default function WaiterPage() {
         return
       }
 
-    // Redireciona para a página de lançamento de pedido,
-    // passando a comanda e a mesa como parâmetros (a ser implementado)
+    setIsSubmitting(true);
+    
+    // Check if the comandaId exists in the customers collection
+    const customersRef = collection(db, "customers");
+    const q = query(customersRef, where("wristbandId", "==", parseInt(comandaId, 10)));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        toast({
+            variant: "destructive",
+            title: "Comanda não encontrada",
+            description: `A comanda/pulseira #${comandaId} não foi encontrada. Verifique o número ou cadastre o cliente.`,
+        });
+        setIsSubmitting(false);
+        return;
+    }
+
+    // Redirect to the order page, passing comandaId as a param and tableId as a query param
     router.push(`/dashboard/tables/${comandaId}?tableId=${tableId}`)
   }
 
@@ -64,6 +82,7 @@ export default function WaiterPage() {
               onChange={(e) => setComandaId(e.target.value)}
               placeholder="Ex: 101"
               className="h-12 text-lg"
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -75,10 +94,11 @@ export default function WaiterPage() {
               onChange={(e) => setTableId(e.target.value)}
               placeholder="Ex: 15"
               className="h-12 text-lg"
+              disabled={isSubmitting}
             />
           </div>
-          <Button onClick={handleStartOrder} className="w-full h-12 text-lg">
-            Lançar Itens
+          <Button onClick={handleStartOrder} className="w-full h-12 text-lg" disabled={isSubmitting}>
+            {isSubmitting ? 'Verificando...' : 'Lançar Itens'}
           </Button>
         </CardContent>
       </Card>
