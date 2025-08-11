@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Package, Square, Users, CircleUser, LogOut, Beer, CookingPot } from "lucide-react"
 
 import {
