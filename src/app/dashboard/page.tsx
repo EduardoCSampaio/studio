@@ -29,12 +29,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { type Order, type Customer } from "@/lib/data"
-import { Printer, CheckCircle, DollarSign, Users, CreditCard, Activity } from "lucide-react"
+import { CheckCircle, DollarSign, Users, CreditCard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
-import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc, getDocs } from "firebase/firestore"
-import { format } from "date-fns"
+import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 
@@ -53,57 +52,12 @@ const initialSalesData = [
   { name: "Dez", total: 0 },
 ]
 
-function OrderReceipt({ order }: { order: Order }) {
-  const [receiptDate, setReceiptDate] = React.useState<Date | null>(null);
-
-  React.useEffect(() => {
-    // This runs only on the client, avoiding server/client mismatch
-    setReceiptDate(new Date());
-  }, []);
-
-  return (
-    <div className="p-6 bg-white text-black font-sans">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold font-serif">RestoTrack</h2>
-        <p className="text-sm">123 Culinary Lane, Foodie City</p>
-        <p className="text-sm">Recibo do Pedido #{order.comandaId}</p>
-      </div>
-      <div className="mb-4">
-        <p><span className="font-semibold">Comanda:</span> {order.comandaId}</p>
-        <p><span className="font-semibold">Mesa:</span> {order.tableId || 'N/A'}</p>
-        <p><span className="font-semibold">Garçom:</span> {order.waiterName}</p>
-        <p><span className="font-semibold">Data:</span> {receiptDate ? receiptDate.toLocaleString() : '...'}</p>
-      </div>
-      <div className="border-t border-b border-gray-300 py-2 mb-4">
-        <div className="flex justify-between font-semibold">
-          <span>Item</span>
-          <span className="text-right">Total</span>
-        </div>
-        {order.items.map((item, index) => (
-          <div key={index} className="flex justify-between my-1">
-            <span>{item.quantity}x {item.name}</span>
-            <span className="text-right">R${(item.price * item.quantity).toFixed(2)}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between font-bold text-lg">
-        <span>Total</span>
-        <span className="text-right">R${order.total.toFixed(2)}</span>
-      </div>
-      <div className="text-center mt-8 text-sm">
-        <p>Obrigado por escolher nosso restaurante!</p>
-      </div>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const [orders, setOrders] = React.useState<Order[]>([])
   const [customersToday, setCustomersToday] = React.useState<Customer[]>([]);
   const [salesData, setSalesData] = React.useState(initialSalesData);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
   const [isDialogOpen, setDialogOpen] = React.useState(false)
-  const [printableOrder, setPrintableOrder] = React.useState<Order | null>(null);
   const { toast } = useToast()
 
   React.useEffect(() => {
@@ -173,14 +127,6 @@ export default function DashboardPage() {
     }
   }
 
-  const handlePrint = (order: Order) => {
-    setPrintableOrder(order);
-    setTimeout(() => {
-      window.print();
-      setPrintableOrder(null);
-    }, 100); // Small delay to allow state to update and component to render
-  };
-  
   const renderOrderRow = (order: Order) => (
     <TableRow key={order.id} className="cursor-pointer" onClick={() => handleOpenDialog(order)}>
       <TableCell className="font-medium">#{order.comandaId}</TableCell>
@@ -434,9 +380,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <DialogFooter>
-               <Button variant="ghost" onClick={() => handlePrint(selectedOrder)}>
-                <Printer className="mr-2 h-4 w-4" /> Imprimir Recibo
-              </Button>
               {selectedOrder.status !== 'Completed' && (
                 <Button onClick={() => handleCompleteOrder(selectedOrder.id)}>
                   <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Concluído
@@ -449,12 +392,8 @@ export default function DashboardPage() {
           </DialogContent>
         </Dialog>
       )}
-      
-      {printableOrder && (
-        <div className="printable-area">
-          <OrderReceipt order={printableOrder} />
-        </div>
-      )}
     </>
   )
 }
+
+    

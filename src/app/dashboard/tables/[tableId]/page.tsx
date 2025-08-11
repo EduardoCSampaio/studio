@@ -20,14 +20,57 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, Trash2 } from "lucide-react"
+import { ShoppingCart, Trash2, Printer } from "lucide-react"
 import { type OrderItem, type Product, type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
 import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 
+
+function PrintableOrder({ orderItems, comandaId, tableId, waiterName }: { orderItems: OrderItem[], comandaId: string, tableId?: string | null, waiterName: string }) {
+    const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
+    const barItems = orderItems.filter(item => item.department === 'Bar');
+
+    return (
+        <div className="p-4 bg-white text-black font-mono text-sm">
+            <div className="text-center mb-4">
+                <h2 className="text-lg font-bold">RestoTrack</h2>
+                <p>Comanda: #{comandaId} {tableId ? `| Mesa: ${tableId}`: ''}</p>
+                <p>Garçom: {waiterName}</p>
+                <p>{new Date().toLocaleString()}</p>
+            </div>
+            
+            {kitchenItems.length > 0 && (
+                <div className="mb-4">
+                    <h3 className="font-bold border-b border-dashed border-black">--- COZINHA ---</h3>
+                    {kitchenItems.map(item => (
+                        <p key={item.productId}>{item.quantity}x {item.name}</p>
+                    ))}
+                </div>
+            )}
+            
+            {barItems.length > 0 && (
+                <div>
+                    <h3 className="font-bold border-b border-dashed border-black">--- BAR ---</h3>
+                    {barItems.map(item => (
+                        <p key={item.productId}>{item.quantity}x {item.name}</p>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function OrderPage() {
   const params = useParams();
@@ -44,6 +87,8 @@ export default function OrderPage() {
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [pageTitle, setPageTitle] = React.useState<string>(`Comanda...`);
+  const [showPrintPreview, setShowPrintPreview] = React.useState(false);
+
 
   React.useEffect(() => {
     async function fetchData() {
@@ -183,6 +228,7 @@ export default function OrderPage() {
   const barProducts = allProducts.filter(p => p.department === "Bar")
 
   return (
+    <>
     <div className="grid md:grid-cols-2 gap-8">
       <div className="space-y-6">
         <h1 className="text-4xl font-headline font-bold text-foreground">{pageTitle}</h1>
@@ -201,7 +247,7 @@ export default function OrderPage() {
                       <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível. Adicione no Firebase.</p>}
+                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível.</p>}
               </div>
                <h3 className="text-lg font-semibold mb-2">Bar</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -211,7 +257,7 @@ export default function OrderPage() {
                       <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível. Adicione no Firebase.</p>}
+                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível.</p>}
               </div>
           </CardContent>
         </Card>
@@ -270,12 +316,45 @@ export default function OrderPage() {
                   <span>Total</span>
                   <span>${calculateTotal().toFixed(2)}</span>
                 </div>
-                <Button className="w-full" size="lg" onClick={handleSendOrder}>Enviar Pedido</Button>
+                <div className="w-full flex gap-2">
+                    <Button className="w-full" size="lg" variant="outline" onClick={() => setShowPrintPreview(true)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Imprimir Comanda
+                    </Button>
+                    <Button className="w-full" size="lg" onClick={handleSendOrder}>Enviar Pedido</Button>
+                </div>
               </CardFooter>
             </>
           )}
         </Card>
       </div>
     </div>
+
+    <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Pré-visualização da Comanda</DialogTitle>
+            </DialogHeader>
+            <PrintableOrder 
+                orderItems={orderItems} 
+                comandaId={wristbandId}
+                tableId={tableIdFromQuery}
+                waiterName={user?.name || 'N/A'}
+            />
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Fechar</Button>
+                </DialogClose>
+                <Button onClick={() => {
+                    toast({ title: "Enviando para a impressora..."})
+                    // Future: window.print() logic here
+                }}>Imprimir
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   )
 }
+
+    
