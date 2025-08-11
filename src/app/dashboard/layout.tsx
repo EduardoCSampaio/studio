@@ -103,7 +103,7 @@ function DashboardSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
            )}
-           {userCan(['Chefe', 'Portaria']) && (
+           {userCan(['Chefe', 'Portaria', 'Caixa']) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
