@@ -1,4 +1,7 @@
 
+"use client"
+
+import * as React from "react"
 import {
   Card,
   CardContent,
@@ -18,26 +21,29 @@ import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
 import { type Product } from "@/lib/data"
 import { db } from "@/lib/firebase"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, onSnapshot } from "firebase/firestore"
 
-async function getProducts(): Promise<Product[]> {
+export default function ProductsPage() {
+  const [products, setProducts] = React.useState<Product[]>([]);
+
+  React.useEffect(() => {
     const productsCol = collection(db, 'products');
-    const productSnapshot = await getDocs(productsCol);
-    const productList = productSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            name: data.name,
-            price: data.price,
-            department: data.department
-        }
+    const unsubscribe = onSnapshot(productsCol, (snapshot) => {
+        const productList = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                price: data.price,
+                department: data.department
+            } as Product;
+        });
+        setProducts(productList);
     });
-    return productList;
-}
 
+    return () => unsubscribe();
+  }, [])
 
-export default async function ProductsPage() {
-  const products = await getProducts();
 
   return (
     <div className="space-y-6">

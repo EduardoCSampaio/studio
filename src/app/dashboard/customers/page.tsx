@@ -51,7 +51,6 @@ export default function CustomersPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
-    // Listen for real-time updates on customers checked in today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = Timestamp.fromDate(today);
@@ -97,7 +96,6 @@ export default function CustomersPage() {
           description: `${newCustomer.name} foi cadastrado com a pulseira #${newCustomer.wristbandId}.`,
         })
 
-        // Reset form and close dialog
         setNewCustomerName("")
         setNewCustomerCpf("")
         setNewCustomerBirthDate(undefined)
