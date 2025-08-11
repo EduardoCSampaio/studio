@@ -32,16 +32,23 @@ import { Label } from "@/components/ui/label"
 import { PlusCircle } from "lucide-react"
 import { customers as initialCustomers, type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 export default function CustomersPage() {
   const [customers, setCustomers] = React.useState<Customer[]>(initialCustomers)
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [newCustomerName, setNewCustomerName] = React.useState("")
+  const [newCustomerCpf, setNewCustomerCpf] = React.useState("")
+  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState<Date | undefined>()
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
 
   const handleAddCustomer = () => {
-    if (!newCustomerName || !newWristbandId) {
+    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
       toast({
         variant: "destructive",
         title: "Erro ao adicionar cliente",
@@ -53,6 +60,8 @@ export default function CustomersPage() {
     const newCustomer: Customer = {
       id: `cust${customers.length + 1}`,
       name: newCustomerName,
+      cpf: newCustomerCpf,
+      birthDate: newCustomerBirthDate,
       wristbandId: parseInt(newWristbandId, 10),
       checkIn: new Date(),
     }
@@ -66,6 +75,8 @@ export default function CustomersPage() {
 
     // Reset form and close dialog
     setNewCustomerName("")
+    setNewCustomerCpf("")
+    setNewCustomerBirthDate(undefined)
     setNewWristbandId("")
     setDialogOpen(false)
   }
@@ -97,6 +108,8 @@ export default function CustomersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>CPF</TableHead>
+                  <TableHead>Data de Nascimento</TableHead>
                   <TableHead>ID da Pulseira</TableHead>
                   <TableHead>Horário do Check-in</TableHead>
                 </TableRow>
@@ -105,6 +118,8 @@ export default function CustomersPage() {
                 {customers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>{customer.cpf}</TableCell>
+                    <TableCell>{format(customer.birthDate, 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{customer.wristbandId}</TableCell>
                     <TableCell>{customer.checkIn.toLocaleString()}</TableCell>
                   </TableRow>
@@ -135,6 +150,49 @@ export default function CustomersPage() {
                 className="col-span-3"
                 placeholder="Ex: João da Silva"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cpf" className="text-right">
+                CPF
+              </Label>
+              <Input
+                id="cpf"
+                value={newCustomerCpf}
+                onChange={(e) => setNewCustomerCpf(e.target.value)}
+                className="col-span-3"
+                placeholder="Ex: 123.456.789-00"
+              />
+            </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="birthDate" className="text-right">
+                Nascimento
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "col-span-3 justify-start text-left font-normal",
+                      !newCustomerBirthDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {newCustomerBirthDate ? (
+                      format(newCustomerBirthDate, "PPP")
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={newCustomerBirthDate}
+                    onSelect={setNewCustomerBirthDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="wristbandId" className="text-right">

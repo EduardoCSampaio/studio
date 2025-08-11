@@ -40,6 +40,8 @@ export type User = {
 export type Customer = {
   id: string;
   name: string;
+  cpf: string;
+  birthDate: Date;
   wristbandId: number;
   checkIn: Date;
 };
@@ -53,9 +55,9 @@ export const users: User[] = [
 ];
 
 export const customers: Customer[] = [
-    { id: 'cust1', name: 'João Silva', wristbandId: 101, checkIn: new Date() },
-    { id: 'cust2', name: 'Maria Oliveira', wristbandId: 102, checkIn: new Date() },
-    { id: 'cust3', name: 'Pedro Santos', wristbandId: 103, checkIn: new Date() },
+    { id: 'cust1', name: 'João Silva', cpf: '111.222.333-44', birthDate: new Date(1990, 1, 1), wristbandId: 101, checkIn: new Date() },
+    { id: 'cust2', name: 'Maria Oliveira', cpf: '222.333.444-55', birthDate: new Date(1985, 5, 10), wristbandId: 102, checkIn: new Date() },
+    { id: 'cust3', name: 'Pedro Santos', cpf: '333.444.555-66', birthDate: new Date(2000, 11, 25), wristbandId: 103, checkIn: new Date() },
 ];
 
 
