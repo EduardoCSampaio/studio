@@ -1,4 +1,7 @@
 
+"use client"
+
+import * as React from "react"
 import {
   Card,
   CardContent,
@@ -15,52 +18,146 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { PlusCircle } from "lucide-react"
-import { customers } from "@/lib/data"
+import { customers as initialCustomers, type Customer } from "@/lib/data"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CustomersPage() {
+  const [customers, setCustomers] = React.useState<Customer[]>(initialCustomers)
+  const [isDialogOpen, setDialogOpen] = React.useState(false)
+  const [newCustomerName, setNewCustomerName] = React.useState("")
+  const [newWristbandId, setNewWristbandId] = React.useState("")
+  const { toast } = useToast()
+
+  const handleAddCustomer = () => {
+    if (!newCustomerName || !newWristbandId) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar cliente",
+        description: "Por favor, preencha todos os campos.",
+      })
+      return
+    }
+
+    const newCustomer: Customer = {
+      id: `cust${customers.length + 1}`,
+      name: newCustomerName,
+      wristbandId: parseInt(newWristbandId, 10),
+      checkIn: new Date(),
+    }
+
+    setCustomers(prevCustomers => [...prevCustomers, newCustomer])
+    
+    toast({
+      title: "Cliente Adicionado",
+      description: `${newCustomer.name} foi cadastrado com a pulseira #${newCustomer.wristbandId}.`,
+    })
+
+    // Reset form and close dialog
+    setNewCustomerName("")
+    setNewWristbandId("")
+    setDialogOpen(false)
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-headline font-bold text-foreground">Customers</h1>
-          <p className="text-muted-foreground">
-            Manage customer check-ins and wristbands.
-          </p>
+    <>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-headline font-bold text-foreground">Clientes</h1>
+            <p className="text-muted-foreground">
+              Gerencie o check-in de clientes e suas pulseiras.
+            </p>
+          </div>
+          <Button onClick={() => setDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Cliente
+          </Button>
         </div>
-        <Button disabled>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Customer
-        </Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer List</CardTitle>
-          <CardDescription>
-            A list of all checked-in customers.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Wristband ID</TableHead>
-                <TableHead>Check-in Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>{customer.wristbandId}</TableCell>
-                  <TableCell>{customer.checkIn.toLocaleString()}</TableCell>
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Clientes</CardTitle>
+            <CardDescription>
+              Uma lista de todos os clientes que fizeram check-in.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>ID da Pulseira</TableHead>
+                  <TableHead>Horário do Check-in</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>{customer.wristbandId}</TableCell>
+                    <TableCell>{customer.checkIn.toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Cliente</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo cliente e associe a uma pulseira.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="name"
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                className="col-span-3"
+                placeholder="Ex: João da Silva"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="wristbandId" className="text-right">
+                Pulseira
+              </Label>
+              <Input
+                id="wristbandId"
+                type="number"
+                value={newWristbandId}
+                onChange={(e) => setNewWristbandId(e.target.value)}
+                className="col-span-3"
+                placeholder="Ex: 101"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleAddCustomer}>Adicionar Cliente</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
