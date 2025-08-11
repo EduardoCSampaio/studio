@@ -1,3 +1,4 @@
+
 import {
   Card,
   CardContent,
@@ -15,9 +16,29 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
-import { products } from "@/lib/data"
+import { type Product } from "@/lib/data"
+import { db } from "@/lib/firebase"
+import { collection, getDocs } from "firebase/firestore"
 
-export default function ProductsPage() {
+async function getProducts(): Promise<Product[]> {
+    const productsCol = collection(db, 'products');
+    const productSnapshot = await getDocs(productsCol);
+    const productList = productSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            price: data.price,
+            department: data.department
+        }
+    });
+    return productList;
+}
+
+
+export default async function ProductsPage() {
+  const products = await getProducts();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -56,6 +77,13 @@ export default function ProductsPage() {
                   <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
+               {products.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center">
+                    Nenhum produto encontrado. Adicione produtos no console do Firebase.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

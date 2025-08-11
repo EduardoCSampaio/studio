@@ -38,6 +38,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
 
   React.useEffect(() => {
       // In a real app, you would fetch products and existing order from Firestore.
+      // We will implement this in the next steps.
       setAllProducts([]);
       setOrderItems([]);
   }, [tableId]);
@@ -96,6 +97,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
     }
     
     // In a real app, you would save this order to Firestore.
+    // We will implement this in the next steps.
     console.log({
         tableId,
         waiterId: user.id,
@@ -134,7 +136,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
                       <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível.</p>}
+                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível. Adicione no Firebase.</p>}
               </div>
                <h3 className="text-lg font-semibold mb-2">Bar</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -144,7 +146,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
                       <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível.</p>}
+                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível. Adicione no Firebase.</p>}
               </div>
           </CardContent>
         </Card>
