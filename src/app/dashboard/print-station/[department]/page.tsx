@@ -10,10 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp, getDocs, writeBatch } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { type Order } from "@/lib/data"
-import { Printer, Wifi, WifiOff } from "lucide-react"
+import { Printer, Wifi, WifiOff, Eye } from "lucide-react"
 
 function PrintableReceipt({ order }: { order: Order | null }) {
     if (!order) return null;
@@ -48,6 +48,39 @@ export default function DepartmentPrintStationPage() {
     const printRef = React.useRef<HTMLDivElement>(null);
     const [currentPrintingOrder, setCurrentPrintingOrder] = React.useState<Order | null>(null);
     const isProcessing = React.useRef(false);
+    const [isWakeLockActive, setWakeLockActive] = React.useState(false);
+
+    // Screen Wake Lock logic
+    React.useEffect(() => {
+        let wakeLock: any = null;
+
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await (navigator as any).wakeLock.request('screen');
+                    setWakeLockActive(true);
+                    console.log('Screen Wake Lock is active.');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock was released.');
+                        setWakeLockActive(false);
+                    });
+                } else {
+                    console.warn('Screen Wake Lock API not supported.');
+                }
+            } catch (err: any) {
+                console.error(`${err.name}, ${err.message}`);
+                 setWakeLockActive(false);
+            }
+        };
+
+        requestWakeLock();
+
+        return () => {
+            if (wakeLock !== null) {
+                wakeLock.release();
+            }
+        };
+    }, []);
 
     React.useEffect(() => {
         if (!department) return;
@@ -55,7 +88,8 @@ export default function DepartmentPrintStationPage() {
         const q = query(
             collection(db, "orders"),
             where("status", "==", "Pending"),
-            where("printedAt", "==", null)
+            where("printedAt", "==", null),
+            where("items.0.department", "==", department) // More specific query
         );
 
         const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -63,9 +97,9 @@ export default function DepartmentPrintStationPage() {
             isProcessing.current = true;
 
             const newOrders: Order[] = [];
-            snapshot.forEach(doc => {
+             snapshot.docs.forEach(doc => {
                  const order = { id: doc.id, ...doc.data() } as Order;
-                 // Firestore queries are limited, so we double-check the department client-side
+                 // Additional client-side check just in case, though query should handle it
                  if (order.items.some(item => item.department === department)) {
                     newOrders.push(order);
                  }
@@ -96,25 +130,20 @@ export default function DepartmentPrintStationPage() {
      React.useEffect(() => {
         if (currentPrintingOrder && printRef.current) {
             const printAndMark = async () => {
-                // Trigger browser print dialog
                 window.print();
                 
-                // Mark the order as printed in Firestore
                 const orderRef = doc(db, "orders", currentPrintingOrder.id);
                 try {
                     await updateDoc(orderRef, {
                         printedAt: serverTimestamp()
                     });
-                    // Remove the printed order from the local queue and reset
                     setOrdersToPrint(prev => prev.filter(o => o.id !== currentPrintingOrder.id));
                     setCurrentPrintingOrder(null);
                 } catch(error) {
                     console.error("Failed to mark order as printed:", error);
-                     // Still reset to allow next order to print, but log the error
                     setCurrentPrintingOrder(null); 
                 }
             }
-            // Use a timeout to allow the print dialog to open and not block the main thread
             const timerId = setTimeout(printAndMark, 500);
             return () => clearTimeout(timerId);
         }
@@ -166,6 +195,12 @@ export default function DepartmentPrintStationPage() {
                                 </>
                            )}
                         </div>
+                         {isWakeLockActive && (
+                            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-blue-600 p-2 bg-blue-50 rounded-md">
+                                <Eye className="h-4 w-4" />
+                                <span>Modo "Sempre Visível" está ativo. A tela não irá desligar.</span>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
