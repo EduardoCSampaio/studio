@@ -8,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { type Order, type Customer } from "@/lib/data"
-import { collection, query, where, getDocs, writeBatch } from "firebase/firestore"
+import { collection, query, where, getDocs, writeBatch, doc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 export default function CashierPage() {
@@ -68,6 +69,7 @@ export default function CashierPage() {
           title: "Comanda não encontrada",
           description: `Nenhum cliente encontrado com a comanda #${comandaId}.`,
         })
+        setIsLoading(false)
         return
       }
       const customerData = { id: customerSnapshot.docs[0].id, ...customerSnapshot.docs[0].data() } as Customer
@@ -83,6 +85,8 @@ export default function CashierPage() {
           title: "Nenhum pedido pendente",
           description: `O cliente ${customerData.name} não possui pedidos pendentes para fechar.`,
         })
+        // Still show customer info, but with no orders
+        setIsLoading(false)
         return
       }
 
@@ -166,6 +170,7 @@ export default function CashierPage() {
               onChange={(e) => setComandaId(e.target.value)}
               placeholder="Ex: 101"
               disabled={isLoading}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchComanda()}
             />
           </div>
           <Button onClick={handleSearchComanda} disabled={isLoading} className="self-end">
