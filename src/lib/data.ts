@@ -55,6 +55,18 @@ export type Customer = {
   tableId?: number;
 };
 
+export type Reservation = {
+    id: string;
+    name: string;
+    pax: number;
+    phone?: string;
+    reservationTime: any; // Timestamp
+    tableId?: string;
+    status: 'Confirmada' | 'Cancelada' | 'Aguardando';
+    notes?: string;
+    createdBy: string; // userId
+}
+
 // Mock data for testing login profiles
 export const testUsers: Omit<User, 'id'>[] = [
     { name: 'Chefe', role: 'Chefe', email: 'chefe@namata.com' },
