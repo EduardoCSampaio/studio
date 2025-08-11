@@ -54,7 +54,7 @@ export default function ProductsPage() {
             Manage your restaurant's menu items.
           </p>
         </div>
-        <Button disabled>
+        <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
           Add Product
         </Button>
