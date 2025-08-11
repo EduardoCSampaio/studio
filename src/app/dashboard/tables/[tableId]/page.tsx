@@ -144,6 +144,7 @@ export default function OrderPage() {
     try {
       const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
       const barItems = orderItems.filter(item => item.department === 'Bar');
+      const generalItems = orderItems.filter(item => item.department === 'Geral');
       const timestamp = serverTimestamp();
 
       const baseOrderData = {
@@ -176,6 +177,15 @@ export default function OrderPage() {
           await addDoc(collection(db, "orders"), barOrder);
       }
 
+      if (generalItems.length > 0) {
+           const generalOrder = {
+              ...baseOrderData,
+              items: generalItems,
+              total: calculateTotal(generalItems),
+          };
+          await addDoc(collection(db, "orders"), generalOrder);
+      }
+
       toast({
         title: "Pedido(s) Enviado(s)!",
         description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
@@ -202,6 +212,7 @@ export default function OrderPage() {
 
   const kitchenProducts = allProducts.filter(p => p.department === "Cozinha")
   const barProducts = allProducts.filter(p => p.department === "Bar")
+  const generalProducts = allProducts.filter(p => p.department === "Geral")
   
   return (
     <>
@@ -226,7 +237,7 @@ export default function OrderPage() {
                  {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível.</p>}
               </div>
                <h3 className="text-lg font-semibold mb-2">Bar</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                  {barProducts.map((product) => (
                   <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
                       <span className="font-semibold">{product.name}</span>
@@ -234,6 +245,16 @@ export default function OrderPage() {
                   </Button>
                 ))}
                 {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível.</p>}
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Geral</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                 {generalProducts.map((product) => (
+                  <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
+                      <span className="font-semibold">{product.name}</span>
+                      <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
+                  </Button>
+                ))}
+                {generalProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do departamento geral disponível.</p>}
               </div>
           </CardContent>
         </Card>

@@ -47,7 +47,7 @@ export default function ProductsPage() {
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [newProductName, setNewProductName] = React.useState("");
   const [newProductPrice, setNewProductPrice] = React.useState("");
-  const [newProductDepartment, setNewProductDepartment] = React.useState<"Cozinha" | "Bar" | "">("");
+  const [newProductDepartment, setNewProductDepartment] = React.useState<"Cozinha" | "Bar" | "Geral" | "">("");
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -197,7 +197,7 @@ export default function ProductsPage() {
               </Label>
                 <Select
                     value={newProductDepartment}
-                    onValueChange={(value) => setNewProductDepartment(value as "Cozinha" | "Bar")}
+                    onValueChange={(value) => setNewProductDepartment(value as "Cozinha" | "Bar" | "Geral")}
                 >
                     <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Selecione um departamento" />
@@ -205,6 +205,7 @@ export default function ProductsPage() {
                     <SelectContent>
                         <SelectItem value="Cozinha">Cozinha</SelectItem>
                         <SelectItem value="Bar">Bar</SelectItem>
+                        <SelectItem value="Geral">Geral</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

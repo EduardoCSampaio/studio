@@ -3,7 +3,7 @@ export type Product = {
   id: string;
   name: string;
   price: number;
-  department: 'Cozinha' | 'Bar';
+  department: 'Cozinha' | 'Bar' | 'Geral';
 };
 
 export type Table = {
@@ -17,7 +17,7 @@ export type OrderItem = {
   name: string;
   price: number;
   quantity: number;
-  department: 'Cozinha' | 'Bar';
+  department: 'Cozinha' | 'Bar' | 'Geral';
   status?: 'Cancelado';
 };
 

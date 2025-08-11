@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CookingPot, Beer } from "lucide-react"
+import { CookingPot, Beer, Package } from "lucide-react"
 
 export default function PrintStationHubPage() {
     return (
@@ -29,7 +29,7 @@ export default function PrintStationHubPage() {
                         Cada estação ouvirá e imprimirá pedidos apenas para o departamento selecionado. Mantenha a aba da estação aberta no computador conectado à impressora correspondente.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-4">
+                <CardContent className="grid md:grid-cols-3 gap-4">
                    <Card>
                        <CardHeader>
                             <CookingPot className="h-8 w-8 text-muted-foreground mb-2" />
@@ -51,6 +51,18 @@ export default function PrintStationHubPage() {
                        <CardContent>
                             <Link href="/dashboard/print-station/Bar" target="_blank">
                                 <Button className="w-full">Abrir Estação do Bar</Button>
+                            </Link>
+                       </CardContent>
+                   </Card>
+                   <Card>
+                       <CardHeader>
+                            <Package className="h-8 w-8 text-muted-foreground mb-2" />
+                            <CardTitle>Estação Geral</CardTitle>
+                            <CardDescription>Ouvirá e imprimirá todos os pedidos diversos.</CardDescription>
+                       </CardHeader>
+                       <CardContent>
+                            <Link href="/dashboard/print-station/Geral" target="_blank">
+                                <Button className="w-full">Abrir Estação Geral</Button>
                             </Link>
                        </CardContent>
                    </Card>
