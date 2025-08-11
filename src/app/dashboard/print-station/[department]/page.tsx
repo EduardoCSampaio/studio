@@ -24,7 +24,7 @@ function PrintableReceipt({ order }: { order: Order | null }) {
     return (
         <div className="p-4 bg-white text-black font-mono text-sm border border-dashed border-black mb-4 w-full">
             <div className="text-center mb-4">
-                <h2 className="text-lg font-bold">RestoTrack</h2>
+                <h2 className="text-lg font-bold">NaMata</h2>
                 <p>Comanda: #{order.comandaId} {order.tableId ? `| Mesa: ${order.tableId}`: ''}</p>
                 <p>Garçom: {order.waiterName}</p>
                 <p>{new Date().toLocaleString()}</p>

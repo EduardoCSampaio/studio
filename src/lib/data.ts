@@ -57,12 +57,12 @@ export type Customer = {
 
 // Mock data for testing login profiles
 export const testUsers: Omit<User, 'id'>[] = [
-    { name: 'Chefe', role: 'Chefe', email: 'chefe@restotrack.com' },
-    { name: 'Portaria', role: 'Portaria', email: 'portaria@restotrack.com' },
-    { name: 'Garçom', role: 'Garçom', email: 'garcom@restotrack.com' },
-    { name: 'Bar', role: 'Bar', email: 'bar@restotrack.com' },
-    { name: 'Cozinha', role: 'Cozinha', email: 'cozinha@restotrack.com' },
-    { name: 'Caixa', role: 'Caixa', email: 'caixa@restotrack.com' },
+    { name: 'Chefe', role: 'Chefe', email: 'chefe@namata.com' },
+    { name: 'Portaria', role: 'Portaria', email: 'portaria@namata.com' },
+    { name: 'Garçom', role: 'Garçom', email: 'garcom@namata.com' },
+    { name: 'Bar', role: 'Bar', email: 'bar@namata.com' },
+    { name: 'Cozinha', role: 'Cozinha', email: 'cozinha@namata.com' },
+    { name: 'Caixa', role: 'Caixa', email: 'caixa@namata.com' },
 ];
 
     
