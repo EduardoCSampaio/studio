@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/hooks/use-auth.tsx"
 import { useToast } from '@/hooks/use-toast';
-import { testUsers } from '@/lib/data';
+import { testUsers, type User } from '@/lib/data';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
   React.useEffect(() => {
-    // If user is already logged in, redirect to dashboard.
+    // If user is already logged in, redirect to the appropriate dashboard.
     if (user) {
       if (user.role === 'Garçom' || user.role === 'Portaria') {
         router.push("/dashboard/customers");
@@ -121,5 +121,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
-    

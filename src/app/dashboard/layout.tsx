@@ -61,7 +61,7 @@ function DashboardSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
           )}
-          {userCan(['Chefe', 'Garçom']) && (
+          {userCan(['Chefe']) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -173,9 +173,16 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+     if (!loading && !user) {
+        router.push("/login");
+     }
+  }, [loading, user, router])
   
-  if (loading) {
+  if (loading || !user) {
       return <div className="flex items-center justify-center min-h-screen">Carregando...</div>
   }
 
@@ -194,5 +201,3 @@ export default function DashboardLayout({
       </SidebarProvider>
   )
 }
-
-    
