@@ -29,13 +29,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle, Calendar as CalendarIcon } from "lucide-react"
+import { PlusCircle, Calendar as CalendarIcon, Pencil } from "lucide-react"
 import { type Reservation } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { collection, addDoc, onSnapshot, query, where, Timestamp } from "firebase/firestore"
+import { collection, addDoc, onSnapshot, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -46,7 +46,9 @@ export default function ReservationsPage() {
   const { user } = useAuth()
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [reservations, setReservations] = React.useState<Reservation[]>([])
-  const [isDialogOpen, setDialogOpen] = React.useState(false)
+  
+  // States for new reservation dialog
+  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false)
   const [newReservation, setNewReservation] = React.useState({
       name: "",
       pax: "",
@@ -56,6 +58,12 @@ export default function ReservationsPage() {
       tableId: "",
       notes: ""
   })
+
+  // States for edit reservation dialog
+  const [isEditDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [selectedReservation, setSelectedReservation] = React.useState<Reservation | null>(null);
+  const [editingTableId, setEditingTableId] = React.useState("");
+
   const { toast } = useToast()
 
   React.useEffect(() => {
@@ -103,7 +111,6 @@ export default function ReservationsPage() {
         const [year, month, day] = newReservation.date.split('-').map(Number);
         const [hours, minutes] = newReservation.time.split(':').map(Number);
         
-        // Month is 0-indexed in JS Date
         const reservationDate = new Date(year, month - 1, day, hours, minutes);
 
         const reservationToAdd = {
@@ -125,7 +132,7 @@ export default function ReservationsPage() {
         })
 
         setNewReservation({ name: "", pax: "", phone: "", date: format(new Date(), 'yyyy-MM-dd'), time: "", tableId: "", notes: "" })
-        setDialogOpen(false)
+        setAddDialogOpen(false)
     } catch (error) {
         console.error("Error adding reservation: ", error);
         toast({
@@ -135,8 +142,39 @@ export default function ReservationsPage() {
         })
     }
   }
+
+  const handleOpenEditDialog = (reservation: Reservation) => {
+    setSelectedReservation(reservation);
+    setEditingTableId(reservation.tableId || "");
+    setEditDialogOpen(true);
+  }
+
+  const handleUpdateTableId = async () => {
+      if (!selectedReservation) return;
+
+      const reservationRef = doc(db, "reservations", selectedReservation.id);
+      try {
+          await updateDoc(reservationRef, {
+              tableId: editingTableId
+          });
+          toast({
+              title: "Mesa Atualizada!",
+              description: `A reserva de ${selectedReservation.name} foi atualizada para a mesa ${editingTableId}.`
+          });
+          setEditDialogOpen(false);
+          setSelectedReservation(null);
+      } catch (error) {
+           console.error("Error updating table ID: ", error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao Atualizar",
+                description: "Não foi possível atualizar a mesa da reserva.",
+            })
+      }
+  }
   
   const canAddReservation = user && (user.role === 'Chefe' || user.role === 'Caixa');
+  const canEditReservation = user && (user.role === 'Chefe' || user.role === 'Caixa' || user.role === 'Garçom');
 
   const getStatusVariant = (status: Reservation['status']) => {
       switch (status) {
@@ -183,7 +221,7 @@ export default function ReservationsPage() {
               </PopoverContent>
             </Popover>
             {canAddReservation && (
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={() => setAddDialogOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Nova Reserva
               </Button>
@@ -207,6 +245,7 @@ export default function ReservationsPage() {
                   <TableHead>Mesa</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Status</TableHead>
+                  {canEditReservation && <TableHead>Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -222,11 +261,19 @@ export default function ReservationsPage() {
                             {reservation.status}
                          </Badge>
                      </TableCell>
+                     {canEditReservation && (
+                        <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(reservation)}>
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Alterar Mesa</span>
+                            </Button>
+                        </TableCell>
+                     )}
                   </TableRow>
                 ))}
                  {reservations.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={6} className="text-center h-24">
+                        <TableCell colSpan={canEditReservation ? 7 : 6} className="text-center h-24">
                             Nenhuma reserva para esta data.
                         </TableCell>
                     </TableRow>
@@ -237,7 +284,8 @@ export default function ReservationsPage() {
         </Card>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+      {/* Add Reservation Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Nova Reserva</DialogTitle>
@@ -294,6 +342,40 @@ export default function ReservationsPage() {
               <Button variant="outline">Cancelar</Button>
             </DialogClose>
             <Button onClick={handleAddReservation}>Adicionar Reserva</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* Edit Reservation Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Alterar Mesa da Reserva</DialogTitle>
+             {selectedReservation && (
+                 <DialogDescription>
+                    Alterando a mesa para a reserva de <span className="font-semibold">{selectedReservation.name}</span>.
+                </DialogDescription>
+             )}
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-tableId" className="text-right">
+                Nº da Mesa
+              </Label>
+              <Input 
+                id="edit-tableId" 
+                value={editingTableId} 
+                onChange={(e) => setEditingTableId(e.target.value)} 
+                className="col-span-3" 
+                placeholder="Ex: 12"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleUpdateTableId}>Salvar Alteração</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
