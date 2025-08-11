@@ -24,6 +24,14 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
+  React.useEffect(() => {
+    // If user is already logged in, redirect to dashboard.
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
+
+
   const handleLogin = async (testUser: User) => {
     setIsLoggingIn(true);
     try {
@@ -65,19 +73,13 @@ export default function LoginPage() {
     }
   };
 
-  if (loading || isLoggingIn) {
+  if (loading || isLoggingIn || user) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen">
           <Logo />
           <p className="mt-4">Carregando...</p>
         </div>
       )
-  }
-
-  // If user is already logged in, redirect to dashboard.
-  if (user) {
-    router.push("/dashboard");
-    return null;
   }
 
   return (
