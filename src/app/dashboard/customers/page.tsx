@@ -53,7 +53,9 @@ export default function CustomersPage() {
   }, []);
 
   const handleAddCustomer = () => {
-    const birthDate = new Date(newCustomerBirthDate)
+    const dateParts = newCustomerBirthDate.split('/');
+    const birthDate = dateParts.length === 3 ? new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`) : new Date('');
+
     if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate || isNaN(birthDate.getTime())) {
       toast({
         variant: "destructive",
@@ -178,7 +180,7 @@ export default function CustomersPage() {
                 value={newCustomerBirthDate}
                 onChange={(e) => setNewCustomerBirthDate(e.target.value)}
                 className="col-span-3"
-                placeholder="Ex: YYYY-MM-DD"
+                placeholder="Ex: DD/MM/AAAA"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
