@@ -1,3 +1,4 @@
+
 export type Product = {
   id: string;
   name: string;
@@ -26,6 +27,37 @@ export type Order = {
   total: number;
   status: 'Pending' | 'In Progress' | 'Completed';
 };
+
+export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Financeiro';
+
+export type User = {
+  id: string;
+  name: string;
+  role: UserRole;
+  email: string;
+};
+
+export type Customer = {
+  id: string;
+  name: string;
+  wristbandId: number;
+  checkIn: Date;
+};
+
+export const users: User[] = [
+  { id: 'user1', name: 'Alice Chefe', role: 'Chefe', email: 'chefe@restotrack.com' },
+  { id: 'user2', name: 'Beto Portaria', role: 'Portaria', email: 'portaria@restotrack.com' },
+  { id: 'user3', name: 'Carlos Garçom', role: 'Garçom', email: 'garcom@restotrack.com' },
+  { id: 'user4', name: 'Diana Bar', role: 'Bar', email: 'bar@restotrack.com' },
+  { id: 'user5', name: 'Eduardo Financeiro', role: 'Financeiro', email: 'financeiro@restotrack.com' },
+];
+
+export const customers: Customer[] = [
+    { id: 'cust1', name: 'João Silva', wristbandId: 101, checkIn: new Date() },
+    { id: 'cust2', name: 'Maria Oliveira', wristbandId: 102, checkIn: new Date() },
+    { id: 'cust3', name: 'Pedro Santos', wristbandId: 103, checkIn: new Date() },
+];
+
 
 export const products: Product[] = [
   { id: 'p1', name: 'Steak Frites', price: 28.50, department: 'Kitchen' },

@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Package, Square } from "lucide-react"
+import { LayoutDashboard, Package, Square, Users, CircleUser } from "lucide-react"
 
 import {
   Sidebar,
@@ -17,7 +18,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/logo"
-import { Button } from "@/components/ui/button"
 
 export default function DashboardLayout({
   children,
@@ -42,10 +42,8 @@ export default function DashboardLayout({
                   tooltip="Dashboard"
                 >
                   <Link href="/dashboard">
-                    <div>
-                      <LayoutDashboard />
-                      <span>Dashboard</span>
-                    </div>
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -56,10 +54,8 @@ export default function DashboardLayout({
                   tooltip="Tables"
                 >
                   <Link href="/dashboard/tables">
-                    <div>
-                      <Square />
-                      <span>Tables</span>
-                    </div>
+                    <Square />
+                    <span>Tables</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -70,10 +66,32 @@ export default function DashboardLayout({
                   tooltip="Products"
                 >
                   <Link href="/dashboard/products">
-                    <div>
-                      <Package />
-                      <span>Products</span>
-                    </div>
+                    <Package />
+                    <span>Products</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/dashboard/customers"}
+                  tooltip="Customers"
+                >
+                  <Link href="/dashboard/customers">
+                    <CircleUser />
+                    <span>Customers</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+               <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/dashboard/users"}
+                  tooltip="Users"
+                >
+                  <Link href="/dashboard/users">
+                    <Users />
+                    <span>Users</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
