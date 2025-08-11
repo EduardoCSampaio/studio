@@ -20,35 +20,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, Trash2, Printer } from "lucide-react"
+import { ShoppingCart, Trash2, Send } from "lucide-react"
 import { type OrderItem, type Product, type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
-import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery } from "firebase/firestore"
+import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
-
-function PrintableReceipt({ items, department, comandaId, tableId, waiterName }: { items: OrderItem[], department: 'Cozinha' | 'Bar', comandaId: string, tableId?: string | null, waiterName: string }) {
-    if (items.length === 0) return null;
-
-    return (
-        <div className="p-4 bg-white text-black font-mono text-sm border border-dashed border-black mb-4 w-full">
-            <div className="text-center mb-4">
-                <h2 className="text-lg font-bold">RestoTrack</h2>
-                <p>Comanda: #{comandaId} {tableId ? `| Mesa: ${tableId}`: ''}</p>
-                <p>Garçom: {waiterName}</p>
-                <p>{new Date().toLocaleString()}</p>
-            </div>
-             <div className="mb-4">
-                <h3 className="font-bold border-b border-dashed border-black text-center">--- {department.toUpperCase()} ---</h3>
-                {items.map(item => (
-                    <p key={item.productId}>{item.quantity}x {item.name}</p>
-                ))}
-            </div>
-        </div>
-    );
-}
 
 export default function OrderPage() {
   const params = useParams();
@@ -64,10 +43,7 @@ export default function OrderPage() {
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [pageTitle, setPageTitle] = React.useState<string>(`Comanda...`);
-  const [printableOrder, setPrintableOrder] = React.useState<OrderItem[] | null>(null);
-  
-  const printRef = React.useRef<HTMLDivElement>(null);
-
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     async function fetchData() {
@@ -99,22 +75,6 @@ export default function OrderPage() {
 
     fetchData();
   }, [wristbandId]);
-
-  React.useEffect(() => {
-    if (printableOrder && printRef.current) {
-        window.print();
-        
-        // Reset state after printing
-        setPrintableOrder(null);
-      
-        // Navigate away after sending and printing
-        if (user?.role === 'Garçom') {
-            router.push("/dashboard/waiter");
-        } else {
-            router.push("/dashboard/customers");
-        }
-    }
-  }, [printableOrder, user, router]);
 
 
   const handleAddItem = (product: Product) => {
@@ -160,7 +120,7 @@ export default function OrderPage() {
     return items.reduce((total, item) => total + item.price * item.quantity, 0)
   }
 
-  const handlePrintAndSendOrder = async () => {
+  const handleSendOrder = async () => {
     if (!user) {
       toast({
         variant: "destructive",
@@ -179,6 +139,8 @@ export default function OrderPage() {
       return
     }
     
+    setIsSubmitting(true);
+
     try {
       const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
       const barItems = orderItems.filter(item => item.department === 'Bar');
@@ -192,7 +154,7 @@ export default function OrderPage() {
           waiterName: user.name,
           status: 'Pending' as const,
           createdAt: timestamp,
-          printedAt: timestamp, // Record the print time
+          printedAt: null,
           tableId: tableIdFromQuery ? parseInt(tableIdFromQuery, 10) : customer?.tableId || null,
       };
 
@@ -219,8 +181,12 @@ export default function OrderPage() {
         description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
       })
       
-      // Trigger printing by setting the state. The useEffect will handle the rest.
-      setPrintableOrder(orderItems);
+      // Navigate away after sending
+      if (user?.role === 'Garçom') {
+          router.push("/dashboard/waiter");
+      } else {
+          router.push("/dashboard/customers");
+      }
 
     } catch(error) {
         console.error("Error sending order: ", error);
@@ -229,6 +195,8 @@ export default function OrderPage() {
             title: "Erro ao Enviar Pedido",
             description: "Ocorreu um erro ao salvar o pedido no banco de dados.",
         })
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
@@ -302,7 +270,7 @@ export default function OrderPage() {
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell className="text-right">R$ {(item.price * item.quantity).toFixed(2)}</TableCell>
                        <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.productId)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.productId)} disabled={isSubmitting}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -325,9 +293,9 @@ export default function OrderPage() {
                   <span>R$ {calculateTotal(orderItems).toFixed(2)}</span>
                 </div>
                 <div className="w-full flex gap-2">
-                    <Button className="w-full" size="lg" onClick={handlePrintAndSendOrder}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Imprimir e Enviar Pedido
+                    <Button className="w-full" size="lg" onClick={handleSendOrder} disabled={isSubmitting}>
+                        <Send className="mr-2 h-4 w-4" />
+                        {isSubmitting ? 'Enviando...' : 'Enviar Pedido'}
                     </Button>
                 </div>
               </CardFooter>
@@ -335,27 +303,6 @@ export default function OrderPage() {
           )}
         </Card>
       </div>
-    </div>
-    
-    <div className="printable-area" ref={printRef}>
-        {printableOrder && (
-            <>
-                <PrintableReceipt
-                    items={printableOrder.filter(item => item.department === 'Cozinha')}
-                    department="Cozinha"
-                    comandaId={wristbandId}
-                    tableId={tableIdFromQuery}
-                    waiterName={user?.name || 'N/A'}
-                />
-                <PrintableReceipt
-                    items={printableOrder.filter(item => item.department === 'Bar')}
-                    department="Bar"
-                    comandaId={wristbandId}
-                    tableId={tableIdFromQuery}
-                    waiterName={user?.name || 'N/A'}
-                />
-            </>
-        )}
     </div>
     </>
   )
