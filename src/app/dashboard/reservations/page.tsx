@@ -29,23 +29,29 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, Calendar as CalendarIcon } from "lucide-react"
 import { type Reservation } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { format } from "date-fns"
-import { collection, addDoc, onSnapshot, query, where, Timestamp, serverTimestamp } from "firebase/firestore"
+import { ptBR } from "date-fns/locale"
+import { collection, addDoc, onSnapshot, query, where, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 
 export default function ReservationsPage() {
   const { user } = useAuth()
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [reservations, setReservations] = React.useState<Reservation[]>([])
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [newReservation, setNewReservation] = React.useState({
       name: "",
       pax: "",
       phone: "",
+      date: format(new Date(), 'yyyy-MM-dd'),
       time: "",
       tableId: "",
       notes: ""
@@ -53,17 +59,17 @@ export default function ReservationsPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const startOfToday = Timestamp.fromDate(today);
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const startOfTomorrow = Timestamp.fromDate(tomorrow);
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    const endOfDayTimestamp = Timestamp.fromDate(endOfDay);
 
     const q = query(collection(db, "reservations"), 
-        where("reservationTime", ">=", startOfToday),
-        where("reservationTime", "<", startOfTomorrow)
+        where("reservationTime", ">=", startOfDayTimestamp),
+        where("reservationTime", "<=", endOfDayTimestamp)
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -76,7 +82,7 @@ export default function ReservationsPage() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [selectedDate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { id, value } = e.target;
@@ -88,15 +94,17 @@ export default function ReservationsPage() {
       toast({
         variant: "destructive",
         title: "Campos Obrigatórios",
-        description: "Por favor, preencha Nome, Pessoas e Horário.",
+        description: "Por favor, preencha Nome, Pessoas, Data e Horário.",
       })
       return
     }
 
     try {
-        const [hours, minutes] = newReservation.time.split(':');
-        const reservationDate = new Date();
-        reservationDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        const [year, month, day] = newReservation.date.split('-').map(Number);
+        const [hours, minutes] = newReservation.time.split(':').map(Number);
+        
+        // Month is 0-indexed in JS Date
+        const reservationDate = new Date(year, month - 1, day, hours, minutes);
 
         const reservationToAdd = {
           name: newReservation.name,
@@ -116,7 +124,7 @@ export default function ReservationsPage() {
           description: `Reserva para ${newReservation.name} foi adicionada com sucesso.`,
         })
 
-        setNewReservation({ name: "", pax: "", phone: "", time: "", tableId: "", notes: "" })
+        setNewReservation({ name: "", pax: "", phone: "", date: format(new Date(), 'yyyy-MM-dd'), time: "", tableId: "", notes: "" })
         setDialogOpen(false)
     } catch (error) {
         console.error("Error adding reservation: ", error);
@@ -145,23 +153,48 @@ export default function ReservationsPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-headline font-bold text-foreground">Reservas do Dia</h1>
+            <h1 className="text-4xl font-headline font-bold text-foreground">Reservas</h1>
             <p className="text-muted-foreground">
-              Gerencie e visualize as reservas de hoje.
+              Gerencie e visualize as reservas por data.
             </p>
           </div>
-          {canAddReservation && (
-            <Button onClick={() => setDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Nova Reserva
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[280px] justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            {canAddReservation && (
+              <Button onClick={() => setDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Nova Reserva
+              </Button>
+            )}
+          </div>
         </div>
         <Card>
           <CardHeader>
             <CardTitle>Lista de Reservas</CardTitle>
             <CardDescription>
-              Uma lista de todas as reservas confirmadas para hoje.
+              Uma lista de todas as reservas confirmadas para a data selecionada.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -194,7 +227,7 @@ export default function ReservationsPage() {
                  {reservations.length === 0 && (
                     <TableRow>
                         <TableCell colSpan={6} className="text-center h-24">
-                            Nenhuma reserva para hoje.
+                            Nenhuma reserva para esta data.
                         </TableCell>
                     </TableRow>
                 )}
@@ -209,7 +242,7 @@ export default function ReservationsPage() {
           <DialogHeader>
             <DialogTitle>Nova Reserva</DialogTitle>
             <DialogDescription>
-              Preencha os detalhes para criar uma nova reserva para hoje.
+              Preencha os detalhes para criar uma nova reserva.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -224,6 +257,12 @@ export default function ReservationsPage() {
                 Pessoas*
               </Label>
               <Input id="pax" type="number" value={newReservation.pax} onChange={handleInputChange} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="date" className="text-right">
+                Data*
+              </Label>
+              <Input id="date" type="date" value={newReservation.date} onChange={handleInputChange} className="col-span-3"/>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="time" className="text-right">
