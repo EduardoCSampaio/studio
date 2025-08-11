@@ -103,9 +103,18 @@ export default function OrderPage() {
   React.useEffect(() => {
     if (printableOrder && printRef.current) {
         window.print();
+        
+        // Reset state after printing
         setPrintableOrder(null);
+      
+        // Navigate away after sending and printing
+        if (user?.role === 'Garçom') {
+            router.push("/dashboard/waiter");
+        } else {
+            router.push("/dashboard/customers");
+        }
     }
-  }, [printableOrder]);
+  }, [printableOrder, user, router]);
 
 
   const handleAddItem = (product: Product) => {
@@ -173,6 +182,7 @@ export default function OrderPage() {
     try {
       const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
       const barItems = orderItems.filter(item => item.department === 'Bar');
+      const timestamp = serverTimestamp();
 
       const baseOrderData = {
           comandaId: wristbandId,
@@ -181,7 +191,8 @@ export default function OrderPage() {
           waiterId: user.id,
           waiterName: user.name,
           status: 'Pending' as const,
-          createdAt: serverTimestamp(),
+          createdAt: timestamp,
+          printedAt: timestamp, // Record the print time
           tableId: tableIdFromQuery ? parseInt(tableIdFromQuery, 10) : customer?.tableId || null,
       };
 
@@ -208,15 +219,8 @@ export default function OrderPage() {
         description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
       })
       
-      // Trigger printing
+      // Trigger printing by setting the state. The useEffect will handle the rest.
       setPrintableOrder(orderItems);
-      
-      // Navigate away after sending
-      if (user.role === 'Garçom') {
-          router.push("/dashboard/waiter");
-      } else {
-          router.push("/dashboard/customers");
-      }
 
     } catch(error) {
         console.error("Error sending order: ", error);

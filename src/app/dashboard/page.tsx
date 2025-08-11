@@ -35,6 +35,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
 import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { format } from "date-fns"
 
 
 const initialSalesData = [
@@ -134,6 +135,9 @@ export default function DashboardPage() {
       <TableCell>{order.waiterName}</TableCell>
       <TableCell>
         {order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
+      </TableCell>
+       <TableCell className="text-right">
+        {order.printedAt ? format((order.printedAt as Timestamp).toDate(), 'HH:mm:ss') : 'Não'}
       </TableCell>
       <TableCell className="text-right">R${order.total.toFixed(2)}</TableCell>
       <TableCell>
@@ -293,13 +297,14 @@ export default function DashboardPage() {
                       <TableHead>Mesa</TableHead>
                       <TableHead>Garçom</TableHead>
                       <TableHead>Itens</TableHead>
+                      <TableHead>Impresso às</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido encontrado.</TableCell></TableRow>}
+                    {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={8} className="text-center h-24">Nenhum pedido encontrado.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -318,13 +323,14 @@ export default function DashboardPage() {
                       <TableHead>Mesa</TableHead>
                       <TableHead>Garçom</TableHead>
                       <TableHead>Itens</TableHead>
+                      <TableHead>Impresso às</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {kitchenOrders.length > 0 ? kitchenOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido ativo na cozinha.</TableCell></TableRow>}
+                    {kitchenOrders.length > 0 ? kitchenOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={8} className="text-center h-24">Nenhum pedido ativo na cozinha.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -343,13 +349,14 @@ export default function DashboardPage() {
                       <TableHead>Mesa</TableHead>
                       <TableHead>Garçom</TableHead>
                       <TableHead>Itens</TableHead>
+                      <TableHead>Impresso às</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {barOrders.length > 0 ? barOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido ativo no bar.</TableCell></TableRow>}
+                    {barOrders.length > 0 ? barOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={8} className="text-center h-24">Nenhum pedido ativo no bar.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -395,5 +402,3 @@ export default function DashboardPage() {
     </>
   )
 }
-
-    

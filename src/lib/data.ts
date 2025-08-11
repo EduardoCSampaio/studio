@@ -33,6 +33,7 @@ export type Order = {
   customerId?: string; 
   customerName?: string;
   createdAt: any; // Firestore server timestamp
+  printedAt?: any; // Firestore server timestamp
 };
 
 export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Caixa' | 'Cozinha';
