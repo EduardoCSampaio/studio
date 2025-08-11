@@ -1,4 +1,5 @@
 
+
 export type Product = {
   id: string;
   name: string;
@@ -65,6 +66,20 @@ export type Reservation = {
     status: 'Confirmada' | 'Cancelada' | 'Aguardando';
     notes?: string;
     createdBy: string; // userId
+}
+
+export type DailyClosing = {
+    id: string;
+    date: any; // Timestamp for the closing date (e.g., start of day)
+    closedAt: any; // Timestamp for when the closing was performed
+    closedByUserId: string;
+    closedByUserName: string;
+    totalRevenue: number;
+    totalServiceFee: number;
+    totalCustomers: number;
+    totalCompletedOrders: number;
+    cancelledItems: OrderItem[];
+    totalCancelledValue: number;
 }
 
 // Mock data for testing login profiles
