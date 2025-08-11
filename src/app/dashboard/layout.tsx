@@ -149,7 +149,7 @@ function DashboardSidebar() {
                 </Button>
           </div>
         </SidebarFooter>
-    </Sidebar>>
+    </Sidebar>
   )
 }
 
