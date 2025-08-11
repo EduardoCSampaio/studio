@@ -92,16 +92,7 @@ export default function ReportsPage() {
         const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
         const endOfDayTimestamp = Timestamp.fromDate(endOfDay);
 
-        // Fetch completed orders
-        const ordersQuery = query(collection(db, "orders"), 
-            where("createdAt", ">=", startOfDayTimestamp),
-            where("createdAt", "<=", endOfDayTimestamp),
-            where("status", "==", "Completed")
-        );
-        const ordersSnapshot = await getDocs(ordersQuery);
-        const completedOrders = ordersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Order);
-
-        // Fetch all orders to find cancelled items
+        // Fetch all orders to find cancelled items and completed ones
         const allOrdersQuery = query(collection(db, "orders"), 
              where("createdAt", ">=", startOfDayTimestamp),
              where("createdAt", "<=", endOfDayTimestamp)
@@ -109,6 +100,8 @@ export default function ReportsPage() {
         const allOrdersSnapshot = await getDocs(allOrdersQuery);
         const allOrders = allOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Order);
         
+        const completedOrders = allOrders.filter(order => order.status === "Completed");
+
         // Fetch customers
         const customersQuery = query(collection(db, "customers"), 
             where("checkIn", ">=", startOfDayTimestamp),
@@ -119,7 +112,7 @@ export default function ReportsPage() {
 
         // --- 2. Calculate metrics ---
         const totalRevenue = completedOrders.reduce((acc, order) => acc + order.total, 0);
-        const totalServiceFee = totalRevenue * 0.10;
+        const totalServiceFee = completedOrders.reduce((acc, order) => acc + (order.total * 0.10), 0); // Assuming 10% on completed orders total
         const cancelledItems = allOrders.flatMap(order => order.items.filter(item => item.status === "Cancelled")) as OrderItem[];
         const totalCancelledValue = cancelledItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
