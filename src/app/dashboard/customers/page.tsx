@@ -37,6 +37,9 @@ import { CalendarIcon } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { collection, addDoc, onSnapshot, query, where, Timestamp } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import Link from "next/link"
 
 export default function CustomersPage() {
   const [customers, setCustomers] = React.useState<Customer[]>([])
@@ -48,13 +51,27 @@ export default function CustomersPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
-    // In a real app, you would fetch this data from Firestore.
-    // For now, we keep it empty as we transition to the new logic.
-    setCustomers([]); 
+    // Listen for real-time updates on customers checked in today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = Timestamp.fromDate(today);
+
+    const q = query(collection(db, "customers"), where("checkIn", ">=", todayTimestamp));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const customersList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          checkIn: (doc.data().checkIn as Timestamp).toDate(),
+          birthDate: (doc.data().birthDate as Timestamp).toDate(),
+      })) as Customer[];
+      setCustomers(customersList);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const handleAddCustomer = () => {
-    // This logic will be updated to save to Firestore.
+  const handleAddCustomer = async () => {
     if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
       toast({
         variant: "destructive",
@@ -64,30 +81,36 @@ export default function CustomersPage() {
       return
     }
 
-    const newCustomer: Customer = {
-      id: `cust${Date.now()}`, // temp id
-      name: newCustomerName,
-      cpf: newCustomerCpf,
-      birthDate: newCustomerBirthDate,
-      wristbandId: parseInt(newWristbandId, 10),
-      checkIn: new Date(),
-    }
-    
-    // In a real app, you would save this to Firestore.
-    // For now, we just add to the local state for demonstration.
-    setCustomers(prevCustomers => [...prevCustomers, newCustomer])
-    
-    toast({
-      title: "Cliente Adicionado",
-      description: `${newCustomer.name} foi cadastrado com a pulseira #${newCustomer.wristbandId}.`,
-    })
+    try {
+        const newCustomer: Omit<Customer, 'id'> = {
+          name: newCustomerName,
+          cpf: newCustomerCpf,
+          birthDate: newCustomerBirthDate,
+          wristbandId: parseInt(newWristbandId, 10),
+          checkIn: new Date(),
+        }
 
-    // Reset form and close dialog
-    setNewCustomerName("")
-    setNewCustomerCpf("")
-    setNewCustomerBirthDate(undefined)
-    setNewWristbandId("")
-    setDialogOpen(false)
+        await addDoc(collection(db, "customers"), newCustomer)
+        
+        toast({
+          title: "Cliente Adicionado",
+          description: `${newCustomer.name} foi cadastrado com a pulseira #${newCustomer.wristbandId}.`,
+        })
+
+        // Reset form and close dialog
+        setNewCustomerName("")
+        setNewCustomerCpf("")
+        setNewCustomerBirthDate(undefined)
+        setNewWristbandId("")
+        setDialogOpen(false)
+    } catch (error) {
+        console.error("Error adding customer: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao salvar cliente",
+            description: "Ocorreu um erro ao salvar o cliente no banco de dados.",
+        })
+    }
   }
 
   return (
@@ -109,7 +132,7 @@ export default function CustomersPage() {
           <CardHeader>
             <CardTitle>Comandas Abertas</CardTitle>
             <CardDescription>
-              Uma lista de todos os clientes que fizeram check-in e possuem uma comanda ativa.
+              Uma lista de todos os clientes que fizeram check-in hoje. Clique em um cliente para lançar um pedido.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -124,11 +147,27 @@ export default function CustomersPage() {
               </TableHeader>
               <TableBody>
                 {customers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>{customer.wristbandId}</TableCell>
-                    <TableCell>{customer.tableId || 'N/A'}</TableCell>
-                    <TableCell>{format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss')}</TableCell>
+                  <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
+                     <TableCell className="font-medium">
+                        <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
+                            {customer.name}
+                        </Link>
+                     </TableCell>
+                     <TableCell>
+                         <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
+                            {customer.wristbandId}
+                        </Link>
+                    </TableCell>
+                    <TableCell>
+                         <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
+                            {customer.tableId || 'N/A'}
+                        </Link>
+                    </TableCell>
+                    <TableCell>
+                         <Link href={`/dashboard/tables/${customer.wristbandId}`} className="block w-full h-full">
+                            {format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss')}
+                        </Link>
+                    </TableCell>
                   </TableRow>
                 ))}
                  {customers.length === 0 && (

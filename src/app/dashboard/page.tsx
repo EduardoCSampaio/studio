@@ -100,6 +100,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     // This needs to be in a useEffect to avoid hydration errors
+    // In a real app, this would fetch data from Firestore
     setOrders([]);
     setSalesData(
       initialSalesData.map(d => ({...d, total: Math.floor(Math.random() * 5000) + 1000}))
@@ -112,6 +113,7 @@ export default function DashboardPage() {
   }
 
   const handleCompleteOrder = (orderId: string) => {
+    // In a real app, this would update the order status in Firestore
     setOrders(prevOrders =>
       prevOrders.map(order =>
         order.id === orderId ? { ...order, status: "Completed" } : order
@@ -169,7 +171,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-4xl font-headline font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">
-            Manage and track all restaurant orders in real-time.
+            Acompanhe em tempo real os pedidos do restaurante.
           </p>
         </div>
       </div>
@@ -386,5 +388,3 @@ export default function DashboardPage() {
     </>
   )
 }
-
-    

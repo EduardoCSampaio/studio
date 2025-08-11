@@ -2,7 +2,6 @@
 "use client"
 
 import * as React from "react"
-import { use } from "react"
 import { useRouter } from "next/navigation"
 import {
   Card,
@@ -26,22 +25,48 @@ import { type OrderItem, type Product } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
+import { collection, getDocs, doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
-export default function TableOrderPage({ params }: { params: { tableId: string } }) {
-  const { tableId } = use(Promise.resolve(params));
+// Let's rename the page param to represent either table or wristband ID
+export default function OrderPage({ params }: { params: { tableId: string } }) {
+  const { tableId: id } = params; // This can be a tableId or a wristbandId now
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>([])
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
+  const [pageTitle, setPageTitle] = React.useState<string>(`Comanda ${id}`);
 
   React.useEffect(() => {
-      // In a real app, you would fetch products and existing order from Firestore.
-      // We will implement this in the next steps.
-      setAllProducts([]);
+    async function fetchData() {
+      // Fetch all products for the menu
+      const productsCol = collection(db, 'products');
+      const productSnapshot = await getDocs(productsCol);
+      const productList = productSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Product[];
+      setAllProducts(productList);
+
+      // Check if the ID corresponds to a customer (wristband)
+      const customerDocRef = doc(db, "customers", id);
+      const customerSnap = await getDoc(customerDocRef);
+      // Note: This logic might need to be more complex if wristband IDs and table IDs can overlap.
+      // For now, we assume they are distinct or we prioritize customer.
+      // A better approach would be to have a different route, e.g., /dashboard/comanda/[wristbandId]
+      
+      // We are reusing the 'table' page, so let's try to determine if it's a customer or table
+      // For now, we'll just display the ID, but in a real app, we'd fetch customer/table details.
+      setPageTitle(`Comanda #${id}`);
+
+      // Here you would also fetch any existing order items for this comanda/table
       setOrderItems([]);
-  }, [tableId]);
+    }
+
+    fetchData();
+  }, [id]);
 
 
   const handleAddItem = (product: Product) => {
@@ -99,7 +124,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
     // In a real app, you would save this order to Firestore.
     // We will implement this in the next steps.
     console.log({
-        tableId,
+        comandaId: id, // This could be a wristband ID or a table ID
         waiterId: user.id,
         waiterName: user.name,
         items: orderItems,
@@ -108,10 +133,10 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
 
     toast({
       title: "Pedido Enviado",
-      description: `O pedido para a mesa ${tableId} foi enviado.`,
+      description: `O pedido para a comanda ${id} foi enviado.`,
     })
 
-    router.push("/dashboard");
+    router.push("/dashboard/customers"); // Go back to the customer list
   }
 
   const kitchenProducts = allProducts.filter(p => p.department === "Kitchen")
@@ -120,12 +145,12 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
   return (
     <div className="grid md:grid-cols-2 gap-8">
       <div className="space-y-6">
-        <h1 className="text-4xl font-headline font-bold text-foreground">Mesa {tableId}</h1>
+        <h1 className="text-4xl font-headline font-bold text-foreground">{pageTitle}</h1>
         
         <Card>
           <CardHeader>
             <CardTitle>Menu de Produtos</CardTitle>
-            <CardDescription>Adicione itens ao pedido da mesa.</CardDescription>
+            <CardDescription>Adicione itens ao pedido da comanda.</CardDescription>
           </CardHeader>
           <CardContent>
               <h3 className="text-lg font-semibold mb-2">Cozinha</h3>
@@ -161,7 +186,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart /> Pedido Atual
                 </CardTitle>
-                <CardDescription>Itens adicionados a esta mesa.</CardDescription>
+                <CardDescription>Itens adicionados a esta comanda.</CardDescription>
               </div>
             </div>
           </CardHeader>
