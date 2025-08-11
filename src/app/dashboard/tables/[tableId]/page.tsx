@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 
 export default function TableOrderPage({ params }: { params: { tableId: string } }) {
-  const { tableId } = params
+  const { tableId } = params;
   const router = useRouter()
   const { toast } = useToast()
   
