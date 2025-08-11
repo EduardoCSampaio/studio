@@ -26,10 +26,26 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { orders as initialOrders, type Order } from "@/lib/data"
-import { Printer, CheckCircle } from "lucide-react"
+import { Printer, CheckCircle, DollarSign, Users, CreditCard, Activity } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+
+const salesData = [
+  { name: "Jan", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Feb", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Mar", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Apr", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "May", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Jun", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Jul", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Aug", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Sep", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Oct", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Nov", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Dec", total: Math.floor(Math.random() * 5000) + 1000 },
+]
 
 function OrderReceipt({ order }: { order: Order }) {
   return (
@@ -123,14 +139,108 @@ export default function DashboardPage() {
   const kitchenOrders = orders.filter(o => o.items.some(i => i.department === 'Kitchen' && o.status !== 'Completed'))
   const barOrders = orders.filter(o => o.items.some(i => i.department === 'Bar' && o.status !== 'Completed'))
   const allOrders = orders
+  
+  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
+  const completedOrders = orders.filter(order => order.status === 'Completed').length;
+  const pendingOrders = orders.filter(order => order.status !== 'Completed').length;
 
   return (
     <>
     <div className="space-y-6">
-      <h1 className="text-4xl font-headline font-bold text-foreground">Dashboard</h1>
-      <p className="text-muted-foreground">
-        Manage and track all restaurant orders in real-time.
-      </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-headline font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage and track all restaurant orders in real-time.
+          </p>
+        </div>
+      </div>
+      
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed Orders</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{completedOrders}</div>
+            <p className="text-xs text-muted-foreground">+180.1% from last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingOrders}</div>
+            <p className="text-xs text-muted-foreground">+19% from last month</p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+573</div>
+            <p className="text-xs text-muted-foreground">+201 since last hour</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+           <CardHeader>
+            <CardTitle>Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+             <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={salesData}>
+                <XAxis
+                  dataKey="name"
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `$${value}`}
+                />
+                <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Recent Sales</CardTitle>
+            <CardDescription>
+              You made {completedOrders} sales this month.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* You can map through recent orders here */}
+            <div className="text-center text-muted-foreground py-8">
+                No recent sales to display.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Tabs defaultValue="all">
         <TabsList>
