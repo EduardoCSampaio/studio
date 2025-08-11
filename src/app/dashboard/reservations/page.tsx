@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle, Calendar as CalendarIcon, Pencil } from "lucide-react"
+import { PlusCircle, Calendar as CalendarIcon, Pencil, Search } from "lucide-react"
 import { type Reservation } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
@@ -46,6 +46,7 @@ export default function ReservationsPage() {
   const { user } = useAuth()
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [reservations, setReservations] = React.useState<Reservation[]>([])
+  const [nameFilter, setNameFilter] = React.useState("")
   
   // States for new reservation dialog
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false)
@@ -184,25 +185,39 @@ export default function ReservationsPage() {
           default: return 'outline'
       }
   }
+  
+  const filteredReservations = reservations.filter(reservation =>
+    reservation.name.toLowerCase().includes(nameFilter.toLowerCase())
+  );
 
 
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-4xl font-headline font-bold text-foreground">Reservas</h1>
             <p className="text-muted-foreground">
-              Gerencie e visualize as reservas por data.
+              Gerencie e visualize as reservas por data e nome.
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="text"
+                    placeholder="Filtrar por nome..."
+                    value={nameFilter}
+                    onChange={(e) => setNameFilter(e.target.value)}
+                    className="pl-9 w-full sm:w-[200px]"
+                />
+            </div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-[280px] justify-start text-left font-normal",
+                    "w-full sm:w-[240px] justify-start text-left font-normal",
                     !selectedDate && "text-muted-foreground"
                   )}
                 >
@@ -221,7 +236,7 @@ export default function ReservationsPage() {
               </PopoverContent>
             </Popover>
             {canAddReservation && (
-              <Button onClick={() => setAddDialogOpen(true)}>
+              <Button className="w-full sm:w-auto" onClick={() => setAddDialogOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Nova Reserva
               </Button>
@@ -232,7 +247,7 @@ export default function ReservationsPage() {
           <CardHeader>
             <CardTitle>Lista de Reservas</CardTitle>
             <CardDescription>
-              Uma lista de todas as reservas confirmadas para a data selecionada.
+              Uma lista de todas as reservas para a data selecionada.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -249,7 +264,7 @@ export default function ReservationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reservations.map((reservation) => (
+                {filteredReservations.map((reservation) => (
                   <TableRow key={reservation.id}>
                      <TableCell className="font-medium">{format(reservation.reservationTime, 'HH:mm')}</TableCell>
                      <TableCell>{reservation.name}</TableCell>
@@ -271,10 +286,10 @@ export default function ReservationsPage() {
                      )}
                   </TableRow>
                 ))}
-                 {reservations.length === 0 && (
+                 {filteredReservations.length === 0 && (
                     <TableRow>
                         <TableCell colSpan={canEditReservation ? 7 : 6} className="text-center h-24">
-                            Nenhuma reserva para esta data.
+                            Nenhuma reserva encontrada para os filtros aplicados.
                         </TableCell>
                     </TableRow>
                 )}
