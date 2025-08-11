@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -89,7 +90,7 @@ function OrderReceipt({ order }: { order: Order }) {
 }
 
 export default function DashboardPage() {
-  const [orders, setOrders] = React.useState<Order[]>(initialOrders)
+  const [orders, setOrders] = React.useState<Order[]>([])
   const [salesData, setSalesData] = React.useState(initialSalesData);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
   const [isDialogOpen, setDialogOpen] = React.useState(false)
@@ -97,6 +98,8 @@ export default function DashboardPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
+    // This needs to be in a useEffect to avoid hydration errors
+    setOrders(initialOrders);
     setSalesData(
       initialSalesData.map(d => ({...d, total: Math.floor(Math.random() * 5000) + 1000}))
     )

@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -19,15 +20,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, ShoppingCart, Trash2 } from "lucide-react"
-import { products as allProducts, orders as allOrders, type OrderItem, type Product } from "@/lib/data"
+import { ShoppingCart, Trash2 } from "lucide-react"
+import { products as allProducts, orders as allOrders, type OrderItem, type Product, type Order, tables } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 
 export default function TableOrderPage({ params }: { params: { tableId: string } }) {
   const { tableId } = params
+  const router = useRouter()
   const { toast } = useToast()
   
+  // Find an existing order for this table that is not completed
   const existingOrder = allOrders.find(o => o.tableId.toString() === tableId && o.status !== 'Completed');
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>(existingOrder ? existingOrder.items : [])
@@ -63,6 +66,47 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
 
   const calculateTotal = () => {
     return orderItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  }
+
+  const handleSendOrder = () => {
+    if (orderItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Pedido Vazio",
+        description: "Adicione itens antes de enviar o pedido.",
+      })
+      return
+    }
+
+    if (existingOrder) {
+      // Update existing order
+      existingOrder.items = orderItems;
+      existingOrder.total = calculateTotal();
+      existingOrder.status = 'In Progress';
+    } else {
+      // Create new order
+      const newOrder: Order = {
+        id: `ord${allOrders.length + 1}`,
+        tableId: parseInt(tableId, 10),
+        items: orderItems,
+        total: calculateTotal(),
+        status: 'Pending',
+      }
+      allOrders.push(newOrder);
+      
+      const table = tables.find(t => t.id.toString() === tableId);
+      if (table) {
+        table.status = 'Occupied';
+        table.orderId = newOrder.id;
+      }
+    }
+
+    toast({
+      title: "Pedido Enviado",
+      description: `O pedido para a mesa ${tableId} foi enviado.`,
+    })
+
+    router.push("/dashboard");
   }
 
   const kitchenProducts = allProducts.filter(p => p.department === "Kitchen")
@@ -154,7 +198,7 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
                   <span>Total</span>
                   <span>${calculateTotal().toFixed(2)}</span>
                 </div>
-                <Button className="w-full" size="lg">Enviar Pedido para a Cozinha/Bar</Button>
+                <Button className="w-full" size="lg" onClick={handleSendOrder}>Enviar Pedido para a Cozinha/Bar</Button>
               </CardFooter>
             </>
           )}
