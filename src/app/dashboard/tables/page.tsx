@@ -11,13 +11,27 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { type Table } from "@/lib/data"
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export default function TablesPage() {
   const [tables, setTables] = React.useState<Table[]>([]);
 
   React.useEffect(() => {
-    // In a real app, you would fetch this data from Firestore.
-    setTables([]);
+    const tablesCol = query(collection(db, 'tables'), orderBy('id'));
+    const unsubscribe = onSnapshot(tablesCol, (snapshot) => {
+        const tableList = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: data.id,
+                status: data.status,
+                orderId: data.orderId,
+            } as Table;
+        });
+        setTables(tableList);
+    });
+
+    return () => unsubscribe();
   }, [])
 
   const getStatusVariant = (status: 'Available' | 'Occupied' | 'Reserved'): 'default' | 'secondary' | 'destructive' | 'outline' => {
@@ -67,7 +81,7 @@ export default function TablesPage() {
          {tables.length === 0 && (
             <Card className="col-span-full">
                  <CardContent className="flex items-center justify-center h-32">
-                    <p className="text-muted-foreground">Nenhuma mesa encontrada.</p>
+                    <p className="text-muted-foreground">Nenhuma mesa encontrada. Adicione mesas no console do Firebase.</p>
                  </CardContent>
             </Card>
         )}
