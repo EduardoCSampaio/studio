@@ -35,6 +35,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
 import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc, getDocs } from "firebase/firestore"
 import { format } from "date-fns"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 
 const initialSalesData = [
