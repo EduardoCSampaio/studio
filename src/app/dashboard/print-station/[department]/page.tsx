@@ -49,36 +49,42 @@ export default function DepartmentPrintStationPage() {
     const [currentPrintingOrder, setCurrentPrintingOrder] = React.useState<Order | null>(null);
     const isProcessing = React.useRef(false);
     const [isWakeLockActive, setWakeLockActive] = React.useState(false);
+    const wakeLockRef = React.useRef<any>(null);
+
 
     // Screen Wake Lock logic
     React.useEffect(() => {
-        let wakeLock: any = null;
-
-        const requestWakeLock = async () => {
+        const acquireWakeLock = async () => {
+             if (document.visibilityState !== 'visible') return;
             try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await (navigator as any).wakeLock.request('screen');
-                    setWakeLockActive(true);
-                    console.log('Screen Wake Lock is active.');
-                    wakeLock.addEventListener('release', () => {
+                if ('wakeLock' in navigator && !wakeLockRef.current) {
+                    wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+                    wakeLockRef.current.addEventListener('release', () => {
                         console.log('Screen Wake Lock was released.');
                         setWakeLockActive(false);
+                        wakeLockRef.current = null;
                     });
-                } else {
-                    console.warn('Screen Wake Lock API not supported.');
+                    setWakeLockActive(true);
+                    console.log('Screen Wake Lock is active.');
                 }
             } catch (err: any) {
-                console.error(`${err.name}, ${err.message}`);
-                 setWakeLockActive(false);
+                console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+                setWakeLockActive(false);
+                 wakeLockRef.current = null;
             }
         };
 
-        requestWakeLock();
+        acquireWakeLock(); // Attempt to acquire on initial load if visible
+
+        document.addEventListener('visibilitychange', acquireWakeLock);
+        document.addEventListener('fullscreenchange', acquireWakeLock);
 
         return () => {
-            if (wakeLock !== null) {
-                wakeLock.release();
+            if (wakeLockRef.current) {
+                wakeLockRef.current.release();
             }
+            document.removeEventListener('visibilitychange', acquireWakeLock);
+            document.removeEventListener('fullscreenchange', acquireWakeLock);
         };
     }, []);
 
