@@ -123,8 +123,10 @@ export default function CashierPage() {
 
     orders.forEach(order => {
         const orderRef = doc(db, "orders", order.id);
-        // Em um futuro próximo, podemos salvar o `paymentMethod` aqui.
-        batch.update(orderRef, { status: "Completed", paymentMethod });
+        batch.update(orderRef, { 
+            status: "Completed", 
+            paymentMethod: paymentMethod 
+        });
     });
 
     try {

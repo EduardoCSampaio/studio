@@ -31,6 +31,7 @@ export type Order = {
   items: OrderItem[];
   total: number;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
+  paymentMethod?: 'dinheiro' | 'credito' | 'debito';
   customerId?: string; 
   customerName?: string;
   createdAt: any; // Firestore server timestamp
@@ -75,6 +76,9 @@ export type DailyClosing = {
     closedByUserId: string;
     closedByUserName: string;
     totalRevenue: number;
+    totalDinheiro: number;
+    totalCredito: number;
+    totalDebito: number;
     totalServiceFee: number;
     totalCustomers: number;
     totalCompletedOrders: number;

@@ -36,7 +36,7 @@ import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { collection, query, where, Timestamp, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, doc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { BookCheck, FileText, Users, DollarSign, XCircle, AlertTriangle, RotateCcw } from "lucide-react"
+import { BookCheck, FileText, Users, DollarSign, XCircle, AlertTriangle, RotateCcw, CreditCard, Banknote } from "lucide-react"
 
 export default function ReportsPage() {
   const { user } = useAuth()
@@ -123,6 +123,10 @@ export default function ReportsPage() {
         const subtotalOfCompleted = completedOrders.reduce((acc, order) => acc + (order.total / (1 + serviceFeePercentage)), 0);
         const totalServiceFee = totalRevenue - subtotalOfCompleted;
 
+        const totalDinheiro = completedOrders.filter(o => o.paymentMethod === 'dinheiro').reduce((acc, order) => acc + order.total, 0);
+        const totalCredito = completedOrders.filter(o => o.paymentMethod === 'credito').reduce((acc, order) => acc + order.total, 0);
+        const totalDebito = completedOrders.filter(o => o.paymentMethod === 'debito').reduce((acc, order) => acc + order.total, 0);
+
         const cancelledItems = allOrders.flatMap(order => order.items.filter(item => item.status === "Cancelled")) as OrderItem[];
         const totalCancelledValue = cancelledItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
@@ -132,6 +136,9 @@ export default function ReportsPage() {
             closedByUserId: user.id,
             closedByUserName: user.name,
             totalRevenue: totalRevenue,
+            totalDinheiro,
+            totalCredito,
+            totalDebito,
             totalServiceFee: totalServiceFee,
             totalCustomers: totalCustomers,
             totalCompletedOrders: completedOrders.length,
@@ -270,7 +277,7 @@ export default function ReportsPage() {
                      Detalhes do último fechamento realizado em {format(closings[0].date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.
                  </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Faturamento Total</CardTitle>
@@ -301,6 +308,35 @@ export default function ReportsPage() {
                         <p className="text-xs text-muted-foreground">Prejuízo de R$ {closings[0].totalCancelledValue.toFixed(2)}</p>
                     </CardContent>
                 </Card>
+                <div className="col-span-full grid md:grid-cols-3 gap-6">
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total em Dinheiro</CardTitle>
+                            <Banknote className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">R$ {(closings[0].totalDinheiro || 0).toFixed(2)}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total em Crédito</CardTitle>
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">R$ {(closings[0].totalCredito || 0).toFixed(2)}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total em Débito</CardTitle>
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">R$ {(closings[0].totalDebito || 0).toFixed(2)}</div>
+                        </CardContent>
+                    </Card>
+                </div>
             </CardContent>
              {closings[0].cancelledItems.length > 0 && (
                 <CardFooter className="flex-col items-start">
@@ -339,7 +375,7 @@ export default function ReportsPage() {
                 <span className="font-bold">{format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>.
                 Esta ação irá consolidar todas as vendas e gerar um relatório final para o dia.
                 <br /><br />
-                <span className="font-semibold text-destructive">Esta ação não pode ser desfeita.</span>
+                <span className="font-semibold text-destructive">Esta ação não pode ser desfeita, a menos que você seja um Chefe.</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
