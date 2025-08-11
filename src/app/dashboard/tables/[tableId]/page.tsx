@@ -27,22 +27,13 @@ import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
 import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
 
 
 function PrintableReceipt({ items, department, comandaId, tableId, waiterName }: { items: OrderItem[], department: 'Cozinha' | 'Bar', comandaId: string, tableId?: string | null, waiterName: string }) {
     if (items.length === 0) return null;
 
     return (
-        <div className="p-4 bg-white text-black font-mono text-sm border border-dashed border-black mb-4">
+        <div className="p-4 bg-white text-black font-mono text-sm border border-dashed border-black mb-4 w-full">
             <div className="text-center mb-4">
                 <h2 className="text-lg font-bold">RestoTrack</h2>
                 <p>Comanda: #{comandaId} {tableId ? `| Mesa: ${tableId}`: ''}</p>
@@ -74,7 +65,9 @@ export default function OrderPage() {
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [pageTitle, setPageTitle] = React.useState<string>(`Comanda...`);
-  const [showPrintPreview, setShowPrintPreview] = React.useState(false);
+  const [printableOrder, setPrintableOrder] = React.useState<OrderItem[] | null>(null);
+  
+  const printRef = React.useRef<HTMLDivElement>(null);
 
 
   React.useEffect(() => {
@@ -104,12 +97,18 @@ export default function OrderPage() {
           }
       }
       
-      // Here you would also fetch any existing order items for this comanda
       setOrderItems([]);
     }
 
     fetchData();
   }, [wristbandId]);
+
+  React.useEffect(() => {
+    if (printableOrder && printRef.current) {
+        window.print();
+        setPrintableOrder(null); 
+    }
+  }, [printableOrder]);
 
 
   const handleAddItem = (product: Product) => {
@@ -228,11 +227,22 @@ export default function OrderPage() {
     }
   }
 
+  const handlePrint = () => {
+    if (orderItems.length > 0) {
+        setPrintableOrder(orderItems);
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Pedido Vazio",
+            description: "Não há itens para imprimir."
+        });
+    }
+  }
+
+
   const kitchenProducts = allProducts.filter(p => p.department === "Cozinha")
   const barProducts = allProducts.filter(p => p.department === "Bar")
-  const kitchenItemsForPrint = orderItems.filter(item => item.department === 'Cozinha');
-  const barItemsForPrint = orderItems.filter(item => item.department === 'Bar');
-
+  
   return (
     <>
     <div className="grid md:grid-cols-2 gap-8">
@@ -323,7 +333,7 @@ export default function OrderPage() {
                   <span>${calculateTotal(orderItems).toFixed(2)}</span>
                 </div>
                 <div className="w-full flex gap-2">
-                    <Button className="w-full" size="lg" variant="outline" onClick={() => setShowPrintPreview(true)}>
+                    <Button className="w-full" size="lg" variant="outline" onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" />
                         Imprimir Comanda
                     </Button>
@@ -335,44 +345,27 @@ export default function OrderPage() {
         </Card>
       </div>
     </div>
-
-    <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Pré-visualização da Comanda</DialogTitle>
-                <DialogDescription>
-                  Comandas separadas para cada departamento.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[60vh] overflow-y-auto p-1">
-                 <PrintableReceipt
-                    items={kitchenItemsForPrint}
+    
+    <div className="printable-area" ref={printRef}>
+        {printableOrder && (
+            <>
+                <PrintableReceipt
+                    items={printableOrder.filter(item => item.department === 'Cozinha')}
                     department="Cozinha"
                     comandaId={wristbandId}
                     tableId={tableIdFromQuery}
                     waiterName={user?.name || 'N/A'}
                 />
-                 <PrintableReceipt
-                    items={barItemsForPrint}
+                <PrintableReceipt
+                    items={printableOrder.filter(item => item.department === 'Bar')}
                     department="Bar"
                     comandaId={wristbandId}
                     tableId={tableIdFromQuery}
                     waiterName={user?.name || 'N/A'}
                 />
-            </div>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="outline">Fechar</Button>
-                </DialogClose>
-                <Button onClick={() => {
-                    toast({ title: "Enviando para a impressora..."})
-                    // Future: window.print() logic here
-                }}>Imprimir
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+            </>
+        )}
+    </div>
     </>
   )
 }
-
