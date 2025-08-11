@@ -23,6 +23,7 @@ import { useAuth, AuthProvider } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { UserRole } from "@/lib/data"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 function DashboardSidebar() {
   const pathname = usePathname()
@@ -201,9 +202,12 @@ function DashboardSidebar() {
                   <span className="text-sm font-semibold">{user.name}</span>
                   <span className="text-xs text-muted-foreground">{user.role}</span>
               </div>
-               <Button variant="ghost" size="icon" className="ml-auto" onClick={logout}>
-                    <LogOut className="h-4 w-4" />
-                </Button>
+              <div className="ml-auto flex items-center gap-1">
+                 <ThemeToggle />
+                 <Button variant="ghost" size="icon" onClick={logout}>
+                      <LogOut className="h-4 w-4" />
+                  </Button>
+              </div>
           </div>
         </SidebarFooter>
     </Sidebar>
