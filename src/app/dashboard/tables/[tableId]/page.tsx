@@ -164,8 +164,8 @@ export default function OrderPage() {
   };
 
 
-  const calculateTotal = () => {
-    return orderItems.reduce((total, item) => total + item.price * item.quantity, 0)
+  const calculateTotal = (items: OrderItem[]) => {
+    return items.reduce((total, item) => total + item.price * item.quantity, 0)
   }
 
   const handleSendOrder = async () => {
@@ -188,32 +188,49 @@ export default function OrderPage() {
     }
     
     try {
-      const orderData = {
+      const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
+      const barItems = orderItems.filter(item => item.department === 'Bar');
+
+      const baseOrderData = {
           comandaId: wristbandId,
           customerId: customer?.id,
           customerName: customer?.name,
           waiterId: user.id,
           waiterName: user.name,
-          items: orderItems,
-          total: calculateTotal(),
-          status: 'Pending',
+          status: 'Pending' as const,
           createdAt: serverTimestamp(),
           tableId: tableIdFromQuery ? parseInt(tableIdFromQuery, 10) : customer?.tableId || null,
       };
 
-      await addDoc(collection(db, "orders"), orderData);
+      if (kitchenItems.length > 0) {
+          const kitchenOrder = {
+              ...baseOrderData,
+              items: kitchenItems,
+              total: calculateTotal(kitchenItems),
+          };
+          await addDoc(collection(db, "orders"), kitchenOrder);
+      }
+      
+      if (barItems.length > 0) {
+           const barOrder = {
+              ...baseOrderData,
+              items: barItems,
+              total: calculateTotal(barItems),
+          };
+          await addDoc(collection(db, "orders"), barOrder);
+      }
 
       toast({
-        title: "Pedido Enviado",
-        description: `O pedido para a comanda ${wristbandId} foi enviado.`,
+        title: "Pedido(s) Enviado(s)!",
+        description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
       })
 
-      // Redirect based on user role
       if (user.role === 'Garçom') {
           router.push("/dashboard/waiter");
       } else {
           router.push("/dashboard/customers");
       }
+
     } catch(error) {
         console.error("Error sending order: ", error);
         toast({
@@ -314,7 +331,7 @@ export default function OrderPage() {
               <CardFooter className="flex flex-col gap-4 !p-6">
                 <div className="w-full flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
+                  <span>${calculateTotal(orderItems).toFixed(2)}</span>
                 </div>
                 <div className="w-full flex gap-2">
                     <Button className="w-full" size="lg" variant="outline" onClick={() => setShowPrintPreview(true)}>
