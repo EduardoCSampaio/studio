@@ -49,6 +49,8 @@ export default function CashierPage() {
   const [customer, setCustomer] = React.useState<Customer | null>(null)
   const [orders, setOrders] = React.useState<Order[]>([])
   const [isClosing, setIsClosing] = React.useState(false)
+  const [itemToCancel, setItemToCancel] = React.useState<ItemWithOrderId | null>(null)
+  const [cancelQuantity, setCancelQuantity] = React.useState("1")
 
   const handleSearchComanda = async () => {
     if (!comandaId) {
@@ -145,8 +147,26 @@ export default function CashierPage() {
     }
   };
 
-  const handleCancelItem = async (itemToCancel: ItemWithOrderId) => {
-    const { orderId, originalIndex } = itemToCancel;
+  const openCancelDialog = (item: ItemWithOrderId) => {
+      if (item.status === 'Cancelled') return;
+      setItemToCancel(item);
+      setCancelQuantity("1");
+  }
+
+  const handleConfirmCancelItem = async () => {
+    if (!itemToCancel) return;
+    
+    const { orderId, originalIndex, quantity: originalQuantity } = itemToCancel;
+    const quantityToCancel = parseInt(cancelQuantity, 10);
+
+    if (isNaN(quantityToCancel) || quantityToCancel <= 0 || quantityToCancel > originalQuantity) {
+        toast({
+            variant: "destructive",
+            title: "Quantidade Inválida",
+            description: `Por favor, insira um número entre 1 e ${originalQuantity}.`,
+        });
+        return;
+    }
 
     setIsLoading(true);
     try {
@@ -155,15 +175,33 @@ export default function CashierPage() {
             throw new Error("Pedido não encontrado no estado local.");
         }
 
-        // Create a new items array with the cancelled item's status updated
-        const updatedItems = orderToUpdate.items.map((item, index) => {
-            if (index === originalIndex) {
-                return { ...item, status: 'Cancelled' as const };
-            }
-            return item;
-        });
+        let updatedItems: OrderItem[];
 
-        // Recalculate the total, ignoring cancelled items
+        if (quantityToCancel === originalQuantity) {
+            // Cancel the entire item line
+            updatedItems = orderToUpdate.items.map((item, index) => {
+                if (index === originalIndex) {
+                    return { ...item, status: 'Cancelled' as const };
+                }
+                return item;
+            });
+        } else {
+            // Split the item
+            updatedItems = [...orderToUpdate.items]; // Create a copy
+            const originalItem = updatedItems[originalIndex];
+            
+            // Reduce quantity of the original item
+            originalItem.quantity = originalQuantity - quantityToCancel;
+
+            // Add a new item for the cancelled portion
+            const cancelledItem: OrderItem = {
+                ...originalItem,
+                quantity: quantityToCancel,
+                status: 'Cancelled',
+            };
+            updatedItems.push(cancelledItem);
+        }
+
         const subtotal = updatedItems
             .filter(item => item.status !== 'Cancelled')
             .reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -177,7 +215,7 @@ export default function CashierPage() {
             total: updatedTotal,
         });
 
-        // Update local state
+        // Update local state to reflect the change immediately
         setOrders(prevOrders => prevOrders.map(order => 
             order.id === orderId 
                 ? { ...order, items: updatedItems, total: updatedTotal } 
@@ -185,8 +223,8 @@ export default function CashierPage() {
         ));
 
         toast({
-            title: "Item Cancelado",
-            description: `${itemToCancel.name} foi marcado como cancelado.`,
+            title: "Item(s) Cancelado(s)",
+            description: `${quantityToCancel}x ${itemToCancel.name} foi(foram) marcado(s) como cancelado(s).`,
         });
 
     } catch (error) {
@@ -198,6 +236,8 @@ export default function CashierPage() {
         });
     } finally {
         setIsLoading(false);
+        setItemToCancel(null);
+        setCancelQuantity("1");
     }
   };
 
@@ -290,7 +330,7 @@ export default function CashierPage() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        onClick={() => handleCancelItem(item)} 
+                                        onClick={() => openCancelDialog(item)} 
                                         disabled={isLoading || item.status === 'Cancelled'}
                                     >
                                         <XCircle className="h-4 w-4 text-destructive" />
@@ -344,8 +384,37 @@ export default function CashierPage() {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <Dialog open={!!itemToCancel} onOpenChange={(isOpen) => !isOpen && setItemToCancel(null)}>
+        <DialogContent>
+             <DialogHeader>
+                <DialogTitle>Cancelar Item</DialogTitle>
+                <DialogDescription>
+                    Quantas unidades de <span className="font-bold">{itemToCancel?.name}</span> (de um total de {itemToCancel?.quantity}) você deseja cancelar?
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                 <Label htmlFor="cancel-quantity">Quantidade a Cancelar</Label>
+                 <Input
+                    id="cancel-quantity"
+                    type="number"
+                    value={cancelQuantity}
+                    onChange={(e) => setCancelQuantity(e.target.value)}
+                    min="1"
+                    max={itemToCancel?.quantity}
+                    placeholder="Ex: 1"
+                 />
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline" disabled={isLoading}>Voltar</Button>
+                </DialogClose>
+                <Button onClick={handleConfirmCancelItem} disabled={isLoading} variant="destructive">
+                    {isLoading ? "Cancelando..." : "Confirmar Cancelamento"}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </>
   )
 }
-
-    
