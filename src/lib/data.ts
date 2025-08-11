@@ -51,5 +51,12 @@ export type Customer = {
   tableId?: number; // Each customer can be at a table
 };
 
-// Mock data will be replaced by Firestore data.
-// We keep the types but data will come from the database.
+// Mock data for testing login profiles
+export const testUsers: User[] = [
+    { id: '1', name: 'Chefe', role: 'Chefe', email: 'chefe@restotrack.com' },
+    { id: '2', name: 'Portaria', role: 'Portaria', email: 'portaria@restotrack.com' },
+    { id: '3', name: 'Garçom', role: 'Garçom', email: 'garcom@restotrack.com' },
+    { id: '4', name: 'Bar', role: 'Bar', email: 'bar@restotrack.com' },
+    { id: '5', name: 'Financeiro', role: 'Financeiro', email: 'financeiro@restotrack.com' },
+];
+

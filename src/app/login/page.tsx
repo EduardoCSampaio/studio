@@ -10,47 +10,61 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/hooks/use-auth"
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { testUsers, User } from '@/lib/data';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, logout, loading } = useAuth();
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const { user, loading } = useAuth();
   const { toast } = useToast();
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (testUser: User) => {
+    setIsLoggingIn(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Login successful!" });
+      await signInWithEmailAndPassword(auth, testUser.email, '123456');
+      toast({ title: `Bem-vindo, ${testUser.name}!` });
       router.push("/dashboard");
     } catch (error: any) {
-        // Try to sign up if login fails (for demo purposes)
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            toast({ title: "Welcome! Account created." });
-            router.push("/dashboard");
-        } catch (signupError: any) {
+        // If login fails because user doesn't exist, create it.
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+            try {
+                await createUserWithEmailAndPassword(auth, testUser.email, '123456');
+                toast({ title: `Conta de teste criada para ${testUser.name}. Bem-vindo!` });
+                router.push("/dashboard");
+            } catch (signupError: any) {
+                 toast({
+                    variant: "destructive",
+                    title: "Falha na criação do usuário",
+                    description: signupError.message,
+                });
+            }
+        } else {
              toast({
                 variant: "destructive",
-                title: "Authentication Failed",
-                description: signupError.message,
+                title: "Falha na autenticação",
+                description: error.message,
             });
         }
+    } finally {
+        setIsLoggingIn(false);
     }
   };
 
-  if (loading) {
-      return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  if (loading || isLoggingIn) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <Logo />
+          <p className="mt-4">Carregando...</p>
+        </div>
+      )
   }
 
+  // If user is already logged in, redirect to dashboard.
   if (user) {
     router.push("/dashboard");
     return null;
@@ -63,26 +77,25 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo />
           </div>
-          <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
+          <CardTitle className="text-2xl font-bold">Entrar como</CardTitle>
           <CardDescription>
-            Use seu email e senha para continuar.
-            <br/>
-            <small className="text-xs">Ex: garcom@restotrack.com / 123456</small>
+            Selecione um perfil para testar a aplicação.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div className="grid grid-cols-1 gap-2">
+                {testUsers.map((testUser) => (
+                    <Button 
+                        key={testUser.id} 
+                        className="w-full" 
+                        onClick={() => handleLogin(testUser)}
+                        disabled={isLoggingIn}
+                    >
+                        {testUser.name} ({testUser.role})
+                    </Button>
+                ))}
             </div>
         </CardContent>
-        <CardFooter>
-          <Button className="w-full" onClick={handleLogin}>Entrar</Button>
-        </CardFooter>
       </Card>
     </div>
   )
