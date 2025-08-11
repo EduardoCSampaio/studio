@@ -23,6 +23,8 @@ export type OrderItem = {
 export type Order = {
   id: string;
   tableId: number;
+  waiterId: string;
+  waiterName: string;
   items: OrderItem[];
   total: number;
   status: 'Pending' | 'In Progress' | 'Completed';
@@ -89,6 +91,8 @@ export let orders: Order[] = [
   {
     id: 'ord1',
     tableId: 1,
+    waiterId: 'user3',
+    waiterName: 'Carlos Garçom',
     items: [
       { productId: 'p1', name: 'Steak Frites', price: 28.50, quantity: 2, department: 'Kitchen' },
       { productId: 'p6', name: 'Glass of Merlot', price: 10.00, quantity: 2, department: 'Bar' },
@@ -99,6 +103,8 @@ export let orders: Order[] = [
   {
     id: 'ord2',
     tableId: 3,
+    waiterId: 'user3',
+    waiterName: 'Carlos Garçom',
     items: [
       { productId: 'p2', name: 'Mushroom Risotto', price: 22.00, quantity: 1, department: 'Kitchen' },
       { productId: 'p4', name: 'Caesar Salad', price: 14.00, quantity: 1, department: 'Kitchen' },
@@ -110,6 +116,8 @@ export let orders: Order[] = [
   {
     id: 'ord3',
     tableId: 6,
+    waiterId: 'user3',
+    waiterName: 'Carlos Garçom',
     items: [
       { productId: 'p5', name: 'Old Fashioned', price: 12.00, quantity: 2, department: 'Bar' },
     ],
@@ -119,6 +127,8 @@ export let orders: Order[] = [
   {
     id: 'ord4',
     tableId: 10,
+    waiterId: 'user3',
+    waiterName: 'Carlos Garçom',
     items: [
       { productId: 'p3', name: 'Grilled Salmon', price: 26.00, quantity: 1, department: 'Kitchen' },
       { productId: 'p8', name: 'Tiramisu', price: 9.00, quantity: 1, department: 'Kitchen' },

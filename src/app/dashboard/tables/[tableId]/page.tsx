@@ -23,14 +23,15 @@ import { Button } from "@/components/ui/button"
 import { ShoppingCart, Trash2 } from "lucide-react"
 import { products as allProducts, orders as allOrders, type OrderItem, type Product, type Order, tables } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
 
 export default function TableOrderPage({ params }: { params: { tableId: string } }) {
   const { tableId } = params;
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useAuth()
   
-  // Find an existing order for this table that is not completed
   const existingOrder = allOrders.find(o => o.tableId.toString() === tableId && o.status !== 'Completed');
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>(existingOrder ? existingOrder.items : [])
@@ -69,6 +70,15 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
   }
 
   const handleSendOrder = () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Erro de Autenticação",
+        description: "Você precisa estar logado para enviar um pedido.",
+      })
+      return
+    }
+
     if (orderItems.length === 0) {
       toast({
         variant: "destructive",
@@ -79,15 +89,17 @@ export default function TableOrderPage({ params }: { params: { tableId: string }
     }
 
     if (existingOrder) {
-      // Update existing order
       existingOrder.items = orderItems;
       existingOrder.total = calculateTotal();
       existingOrder.status = 'In Progress';
+      existingOrder.waiterId = user.id;
+      existingOrder.waiterName = user.name;
     } else {
-      // Create new order
       const newOrder: Order = {
         id: `ord${allOrders.length + 1}`,
         tableId: parseInt(tableId, 10),
+        waiterId: user.id,
+        waiterName: user.name,
         items: orderItems,
         total: calculateTotal(),
         status: 'Pending',

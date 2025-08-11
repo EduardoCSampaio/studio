@@ -64,6 +64,7 @@ function OrderReceipt({ order }: { order: Order }) {
       </div>
       <div className="mb-4">
         <p><span className="font-semibold">Table:</span> {order.tableId}</p>
+        <p><span className="font-semibold">Garçom:</span> {order.waiterName}</p>
         <p><span className="font-semibold">Date:</span> {receiptDate ? receiptDate.toLocaleString() : '...'}</p>
       </div>
       <div className="border-t border-b border-gray-300 py-2 mb-4">
@@ -135,6 +136,7 @@ export default function DashboardPage() {
     <TableRow key={order.id} className="cursor-pointer" onClick={() => handleOpenDialog(order)}>
       <TableCell className="font-medium">#{order.id}</TableCell>
       <TableCell>{order.tableId}</TableCell>
+      <TableCell>{order.waiterName}</TableCell>
       <TableCell>
         {order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
       </TableCell>
@@ -275,6 +277,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead>Order #</TableHead>
                     <TableHead>Table</TableHead>
+                    <TableHead>Garçom</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -282,7 +285,7 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={6} className="text-center">No orders found.</TableCell></TableRow>}
+                  {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center">No orders found.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -299,6 +302,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead>Order #</TableHead>
                     <TableHead>Table</TableHead>
+                    <TableHead>Garçom</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -306,7 +310,7 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {kitchenOrders.length > 0 ? kitchenOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={6} className="text-center">No active kitchen orders.</TableCell></TableRow>}
+                  {kitchenOrders.length > 0 ? kitchenOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center">No active kitchen orders.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -323,6 +327,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead>Order #</TableHead>
                     <TableHead>Table</TableHead>
+                    <TableHead>Garçom</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -330,7 +335,7 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {barOrders.length > 0 ? barOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={6} className="text-center">No active bar orders.</TableCell></TableRow>}
+                  {barOrders.length > 0 ? barOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center">No active bar orders.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -345,7 +350,7 @@ export default function DashboardPage() {
           <DialogHeader>
             <DialogTitle className="font-headline">Order #{selectedOrder.id}</DialogTitle>
             <DialogDescription>
-              Table: {selectedOrder.tableId} - Status: {selectedOrder.status}
+              Table: {selectedOrder.tableId} - Garçom: {selectedOrder.waiterName} - Status: {selectedOrder.status}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
