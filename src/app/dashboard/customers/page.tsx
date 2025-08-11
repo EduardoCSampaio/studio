@@ -43,20 +43,22 @@ export default function CustomersPage() {
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [newCustomerName, setNewCustomerName] = React.useState("")
   const [newCustomerCpf, setNewCustomerCpf] = React.useState("")
-  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState<Date | undefined>()
+  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState("")
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
 
   React.useEffect(() => {
-    setCustomers(initialCustomers);
+    // This needs to be in a useEffect to avoid hydration errors
+    setCustomers(initialCustomers.map(c => ({...c, checkIn: new Date(c.checkIn)})));
   }, []);
 
   const handleAddCustomer = () => {
-    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
+    const birthDate = new Date(newCustomerBirthDate)
+    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate || isNaN(birthDate.getTime())) {
       toast({
         variant: "destructive",
         title: "Erro ao adicionar cliente",
-        description: "Por favor, preencha todos os campos.",
+        description: "Por favor, preencha todos os campos corretamente.",
       })
       return
     }
@@ -65,7 +67,7 @@ export default function CustomersPage() {
       id: `cust${customers.length + 1}`,
       name: newCustomerName,
       cpf: newCustomerCpf,
-      birthDate: newCustomerBirthDate,
+      birthDate: birthDate,
       wristbandId: parseInt(newWristbandId, 10),
       checkIn: new Date(),
     }
@@ -80,7 +82,7 @@ export default function CustomersPage() {
     // Reset form and close dialog
     setNewCustomerName("")
     setNewCustomerCpf("")
-    setNewCustomerBirthDate(undefined)
+    setNewCustomerBirthDate("")
     setNewWristbandId("")
     setDialogOpen(false)
   }
@@ -171,32 +173,13 @@ export default function CustomersPage() {
               <Label htmlFor="birthDate" className="text-right">
                 Nascimento
               </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "col-span-3 justify-start text-left font-normal",
-                      !newCustomerBirthDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newCustomerBirthDate ? (
-                      format(newCustomerBirthDate, "PPP")
-                    ) : (
-                      <span>Selecione uma data</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newCustomerBirthDate}
-                    onSelect={setNewCustomerBirthDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Input
+                id="birthDate"
+                value={newCustomerBirthDate}
+                onChange={(e) => setNewCustomerBirthDate(e.target.value)}
+                className="col-span-3"
+                placeholder="Ex: YYYY-MM-DD"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="wristbandId" className="text-right">
