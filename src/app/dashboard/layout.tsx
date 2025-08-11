@@ -84,9 +84,7 @@ export default function DashboardLayout({
           <div className="p-4 md:p-6 lg:p-8">
             <div className="md:hidden flex justify-between items-center mb-4">
                <Logo />
-               <SidebarTrigger asChild>
-                 <Button variant="ghost" size="icon"><LayoutDashboard /></Button>
-               </SidebarTrigger>
+               <SidebarTrigger />
             </div>
             {children}
           </div>
