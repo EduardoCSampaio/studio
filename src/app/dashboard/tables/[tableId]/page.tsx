@@ -38,36 +38,23 @@ import {
 } from "@/components/ui/dialog"
 
 
-function PrintableOrder({ orderItems, comandaId, tableId, waiterName }: { orderItems: OrderItem[], comandaId: string, tableId?: string | null, waiterName: string }) {
-    const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
-    const barItems = orderItems.filter(item => item.department === 'Bar');
+function PrintableReceipt({ items, department, comandaId, tableId, waiterName }: { items: OrderItem[], department: 'Cozinha' | 'Bar', comandaId: string, tableId?: string | null, waiterName: string }) {
+    if (items.length === 0) return null;
 
     return (
-        <div className="p-4 bg-white text-black font-mono text-sm">
+        <div className="p-4 bg-white text-black font-mono text-sm border border-dashed border-black mb-4">
             <div className="text-center mb-4">
                 <h2 className="text-lg font-bold">RestoTrack</h2>
                 <p>Comanda: #{comandaId} {tableId ? `| Mesa: ${tableId}`: ''}</p>
                 <p>Garçom: {waiterName}</p>
                 <p>{new Date().toLocaleString()}</p>
             </div>
-            
-            {kitchenItems.length > 0 && (
-                <div className="mb-4">
-                    <h3 className="font-bold border-b border-dashed border-black">--- COZINHA ---</h3>
-                    {kitchenItems.map(item => (
-                        <p key={item.productId}>{item.quantity}x {item.name}</p>
-                    ))}
-                </div>
-            )}
-            
-            {barItems.length > 0 && (
-                <div>
-                    <h3 className="font-bold border-b border-dashed border-black">--- BAR ---</h3>
-                    {barItems.map(item => (
-                        <p key={item.productId}>{item.quantity}x {item.name}</p>
-                    ))}
-                </div>
-            )}
+             <div className="mb-4">
+                <h3 className="font-bold border-b border-dashed border-black text-center">--- {department.toUpperCase()} ---</h3>
+                {items.map(item => (
+                    <p key={item.productId}>{item.quantity}x {item.name}</p>
+                ))}
+            </div>
         </div>
     );
 }
@@ -243,6 +230,8 @@ export default function OrderPage() {
 
   const kitchenProducts = allProducts.filter(p => p.department === "Cozinha")
   const barProducts = allProducts.filter(p => p.department === "Bar")
+  const kitchenItemsForPrint = orderItems.filter(item => item.department === 'Cozinha');
+  const barItemsForPrint = orderItems.filter(item => item.department === 'Bar');
 
   return (
     <>
@@ -351,13 +340,26 @@ export default function OrderPage() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Pré-visualização da Comanda</DialogTitle>
+                <DialogDescription>
+                  Comandas separadas para cada departamento.
+                </DialogDescription>
             </DialogHeader>
-            <PrintableOrder 
-                orderItems={orderItems} 
-                comandaId={wristbandId}
-                tableId={tableIdFromQuery}
-                waiterName={user?.name || 'N/A'}
-            />
+            <div className="max-h-[60vh] overflow-y-auto p-1">
+                 <PrintableReceipt
+                    items={kitchenItemsForPrint}
+                    department="Cozinha"
+                    comandaId={wristbandId}
+                    tableId={tableIdFromQuery}
+                    waiterName={user?.name || 'N/A'}
+                />
+                 <PrintableReceipt
+                    items={barItemsForPrint}
+                    department="Bar"
+                    comandaId={wristbandId}
+                    tableId={tableIdFromQuery}
+                    waiterName={user?.name || 'N/A'}
+                />
+            </div>
             <DialogFooter>
                 <DialogClose asChild>
                     <Button variant="outline">Fechar</Button>
@@ -374,4 +376,3 @@ export default function OrderPage() {
   )
 }
 
-    
