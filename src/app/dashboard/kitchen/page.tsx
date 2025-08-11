@@ -17,10 +17,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { type Order, type OrderItem } from "@/lib/data"
+import { collection, onSnapshot, query, where } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export default function KitchenPage() {
-    // In a future step, we will fetch real-time orders from Firestore here.
-  const orders = []
+  const [orders, setOrders] = React.useState<Order[]>([])
+
+  React.useEffect(() => {
+    const ordersCol = collection(db, 'orders');
+    // Query for orders that are not completed. We'll filter for kitchen items on the client.
+    const q = query(ordersCol, where("status", "!=", "Completed"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const allPendingOrders = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as Order[];
+        
+        const kitchenOrders = allPendingOrders.filter(order => 
+            order.items.some(item => item.department === 'Cozinha')
+        );
+
+        setOrders(kitchenOrders);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const getKitchenItems = (items: OrderItem[]) => {
+    return items
+      .filter(item => item.department === 'Cozinha')
+      .map(item => `${item.quantity}x ${item.name}`)
+      .join(', ');
+  }
 
   return (
     <div className="space-y-6">
@@ -36,7 +66,7 @@ export default function KitchenPage() {
           <CardDescription>
             Lista de todos os pedidos que a cozinha precisa preparar.
           </CardDescription>
-        </CardHeader>
+        </Header>
         <CardContent>
           <Table>
             <TableHeader>
@@ -55,8 +85,14 @@ export default function KitchenPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                // This part will be populated with data from Firestore later
-                <></>
+                 orders.map(order => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">#{order.comandaId}</TableCell>
+                    <TableCell>{order.tableId || 'N/A'}</TableCell>
+                    <TableCell>{getKitchenItems(order.items)}</TableCell>
+                    <TableCell>{order.waiterName}</TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
