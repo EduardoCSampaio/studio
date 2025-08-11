@@ -35,6 +35,8 @@ export default function LoginPage() {
           router.push("/dashboard/bar");
       } else if (user.role === 'Cozinha') {
           router.push("/dashboard/kitchen");
+      } else if (user.role === 'Caixa') {
+        router.push("/dashboard/cashier");
       }
       else {
         router.push("/dashboard");

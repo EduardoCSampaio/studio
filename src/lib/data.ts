@@ -34,7 +34,7 @@ export type Order = {
   createdAt: any; // Firestore server timestamp
 };
 
-export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Financeiro' | 'Cozinha';
+export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Caixa' | 'Cozinha';
 
 export type User = {
   id: string;
@@ -60,7 +60,7 @@ export const testUsers: Omit<User, 'id'>[] = [
     { name: 'Garçom', role: 'Garçom', email: 'garcom@restotrack.com' },
     { name: 'Bar', role: 'Bar', email: 'bar@restotrack.com' },
     { name: 'Cozinha', role: 'Cozinha', email: 'cozinha@restotrack.com' },
-    { name: 'Financeiro', role: 'Financeiro', email: 'financeiro@restotrack.com' },
+    { name: 'Caixa', role: 'Caixa', email: 'caixa@restotrack.com' },
 ];
 
     
