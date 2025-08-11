@@ -89,6 +89,7 @@ export default function CustomersPage() {
           checkIn: new Date(),
         }
 
+        // We use wristbandId as the document ID for easier lookup
         await addDoc(collection(db, "customers"), newCustomer)
         
         toast({
@@ -266,3 +267,5 @@ export default function CustomersPage() {
     </>
   )
 }
+
+    

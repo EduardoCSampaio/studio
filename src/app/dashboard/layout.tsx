@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Package, Square, Users, CircleUser, LogOut } from "lucide-react"
+import { LayoutDashboard, Package, Square, Users, CircleUser, LogOut, Beer, CookingPot } from "lucide-react"
 
 import {
   Sidebar,
@@ -22,6 +22,7 @@ import { Logo } from "@/components/logo"
 import { useAuth, AuthProvider } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { UserRole } from "@/lib/data"
 
 function DashboardSidebar() {
   const pathname = usePathname()
@@ -37,7 +38,7 @@ function DashboardSidebar() {
     return name.substring(0, 2)
   }
 
-  const userCan = (roles: string[]) => user.role && roles.includes(user.role)
+  const userCan = (roles: UserRole[]) => user.role && roles.includes(user.role)
 
   return (
     <Sidebar>
@@ -65,11 +66,11 @@ function DashboardSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={pathname.startsWith("/dashboard/tables")}
-                tooltip="Tables"
+                tooltip="Mesas"
               >
                 <Link href="/dashboard/tables">
                   <Square />
-                  <span>Tables</span>
+                  <span>Mesas</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -79,25 +80,25 @@ function DashboardSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={pathname === "/dashboard/products"}
-                tooltip="Products"
+                tooltip="Produtos"
               >
                 <Link href="/dashboard/products">
                   <Package />
-                  <span>Products</span>
+                  <span>Produtos</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
            )}
-           {userCan(['Chefe', 'Portaria']) && (
+           {userCan(['Chefe', 'Portaria', 'Garçom']) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={pathname === "/dashboard/customers"}
-                tooltip="Customers"
+                tooltip="Comandas"
               >
                 <Link href="/dashboard/customers">
                   <CircleUser />
-                  <span>Customers</span>
+                  <span>Comandas</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -107,11 +108,11 @@ function DashboardSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={pathname === "/dashboard/users"}
-                tooltip="Users"
+                tooltip="Usuários"
               >
                 <Link href="/dashboard/users">
                   <Users />
-                  <span>Users</span>
+                  <span>Usuários</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -120,12 +121,26 @@ function DashboardSidebar() {
              <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === "/dashboard"}
-                  tooltip="Bar Orders"
+                  isActive={pathname === "/dashboard/bar"}
+                  tooltip="Pedidos do Bar"
                 >
-                  <Link href="/dashboard">
-                    <LayoutDashboard />
+                  <Link href="/dashboard/bar">
+                    <Beer />
                     <span>Pedidos do Bar</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+           )}
+            {userCan(['Cozinha']) && (
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/dashboard/kitchen"}
+                  tooltip="Pedidos da Cozinha"
+                >
+                  <Link href="/dashboard/kitchen">
+                    <CookingPot />
+                    <span>Pedidos da Cozinha</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -179,3 +194,5 @@ export default function DashboardLayout({
       </SidebarProvider>
   )
 }
+
+    

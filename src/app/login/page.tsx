@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/hooks/use-auth.tsx"
 import { useToast } from '@/hooks/use-toast';
-import { testUsers, User } from '@/lib/data';
+import { testUsers } from '@/lib/data';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,17 +27,26 @@ export default function LoginPage() {
   React.useEffect(() => {
     // If user is already logged in, redirect to dashboard.
     if (user) {
-      router.push("/dashboard");
+      if (user.role === 'Garçom' || user.role === 'Portaria') {
+        router.push("/dashboard/customers");
+      } else if (user.role === 'Bar') {
+          router.push("/dashboard/bar");
+      } else if (user.role === 'Cozinha') {
+          router.push("/dashboard/kitchen");
+      }
+      else {
+        router.push("/dashboard");
+      }
     }
   }, [user, router]);
 
 
-  const handleLogin = async (testUser: User) => {
+  const handleLogin = async (testUser: Omit<User, 'id'>) => {
     setIsLoggingIn(true);
     try {
       await signInWithEmailAndPassword(auth, testUser.email, '123456');
       toast({ title: `Bem-vindo, ${testUser.name}!` });
-      router.push("/dashboard");
+      // Redirect logic is now in useEffect
     } catch (error: any) {
         // If login fails because user doesn't exist, create it.
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
@@ -53,7 +62,7 @@ export default function LoginPage() {
                 });
                 
                 toast({ title: `Conta de teste criada para ${testUser.name}. Bem-vindo!` });
-                router.push("/dashboard");
+                 // Redirect logic is now in useEffect
             } catch (signupError: any) {
                  toast({
                     variant: "destructive",
@@ -98,7 +107,7 @@ export default function LoginPage() {
             <div className="grid grid-cols-1 gap-2">
                 {testUsers.map((testUser) => (
                     <Button 
-                        key={testUser.id} 
+                        key={testUser.email} 
                         className="w-full" 
                         onClick={() => handleLogin(testUser)}
                         disabled={isLoggingIn}
@@ -112,3 +121,5 @@ export default function LoginPage() {
     </div>
   )
 }
+
+    

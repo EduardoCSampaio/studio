@@ -3,7 +3,7 @@ export type Product = {
   id: string;
   name: string;
   price: number;
-  department: 'Kitchen' | 'Bar';
+  department: 'Cozinha' | 'Bar';
 };
 
 export type Table = {
@@ -17,22 +17,24 @@ export type OrderItem = {
   name: string;
   price: number;
   quantity: number;
-  department: 'Kitchen' | 'Bar';
+  department: 'Cozinha' | 'Bar';
 };
 
 export type Order = {
   id: string;
-  tableId: number;
+  comandaId: string;
+  tableId?: number;
   waiterId: string;
   waiterName: string;
   items: OrderItem[];
   total: number;
   status: 'Pending' | 'In Progress' | 'Completed';
-  // We might associate an order with a customer later
   customerId?: string; 
+  customerName?: string;
+  createdAt: any; // Firestore server timestamp
 };
 
-export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Financeiro';
+export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Financeiro' | 'Cozinha';
 
 export type User = {
   id: string;
@@ -48,15 +50,17 @@ export type Customer = {
   birthDate: Date;
   wristbandId: number;
   checkIn: Date;
-  tableId?: number; // Each customer can be at a table
+  tableId?: number;
 };
 
 // Mock data for testing login profiles
-export const testUsers: User[] = [
-    { id: '1', name: 'Chefe', role: 'Chefe', email: 'chefe@restotrack.com' },
-    { id: '2', name: 'Portaria', role: 'Portaria', email: 'portaria@restotrack.com' },
-    { id: '3', name: 'Garçom', role: 'Garçom', email: 'garcom@restotrack.com' },
-    { id: '4', name: 'Bar', role: 'Bar', email: 'bar@restotrack.com' },
-    { id: '5', name: 'Financeiro', role: 'Financeiro', email: 'financeiro@restotrack.com' },
+export const testUsers: Omit<User, 'id'>[] = [
+    { name: 'Chefe', role: 'Chefe', email: 'chefe@restotrack.com' },
+    { name: 'Portaria', role: 'Portaria', email: 'portaria@restotrack.com' },
+    { name: 'Garçom', role: 'Garçom', email: 'garcom@restotrack.com' },
+    { name: 'Bar', role: 'Bar', email: 'bar@restotrack.com' },
+    { name: 'Cozinha', role: 'Cozinha', email: 'cozinha@restotrack.com' },
+    { name: 'Financeiro', role: 'Financeiro', email: 'financeiro@restotrack.com' },
 ];
 
+    

@@ -21,23 +21,25 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Trash2 } from "lucide-react"
-import { type OrderItem, type Product } from "@/lib/data"
+import { type OrderItem, type Product, type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
-import { collection, getDocs, doc, getDoc } from "firebase/firestore"
+import { collection, getDocs, doc, getDoc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
-// Let's rename the page param to represent either table or wristband ID
+
 export default function OrderPage({ params }: { params: { tableId: string } }) {
-  const { tableId: id } = params; // This can be a tableId or a wristbandId now
+  // The param is now a wristbandId, but we keep the name for route consistency
+  const { tableId: wristbandId } = params;
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>([])
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
-  const [pageTitle, setPageTitle] = React.useState<string>(`Comanda ${id}`);
+  const [customer, setCustomer] = React.useState<Customer | null>(null);
+  const [pageTitle, setPageTitle] = React.useState<string>(`Comanda...`);
 
   React.useEffect(() => {
     async function fetchData() {
@@ -50,23 +52,29 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
       })) as Product[];
       setAllProducts(productList);
 
-      // Check if the ID corresponds to a customer (wristband)
-      const customerDocRef = doc(db, "customers", id);
-      const customerSnap = await getDoc(customerDocRef);
-      // Note: This logic might need to be more complex if wristband IDs and table IDs can overlap.
-      // For now, we assume they are distinct or we prioritize customer.
-      // A better approach would be to have a different route, e.g., /dashboard/comanda/[wristbandId]
-      
-      // We are reusing the 'table' page, so let's try to determine if it's a customer or table
-      // For now, we'll just display the ID, but in a real app, we'd fetch customer/table details.
-      setPageTitle(`Comanda #${id}`);
+      // Fetch the customer data using the wristbandId
+      const customersRef = collection(db, "customers");
+      const q = query(customersRef, where("wristbandId", "==", parseInt(wristbandId, 10)));
+      const querySnapshot = await getDocsFromQuery(q);
 
-      // Here you would also fetch any existing order items for this comanda/table
+      if (!querySnapshot.empty) {
+        const customerDoc = querySnapshot.docs[0];
+        const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
+        setCustomer(customerData);
+        setPageTitle(`Comanda #${wristbandId} - ${customerData.name}`);
+      } else {
+        // Handle case where wristbandId is not found or is a table ID
+        setPageTitle(`Detalhes da Mesa/Comanda #${wristbandId}`);
+      }
+      
+      // Here you would also fetch any existing order items for this comanda
       setOrderItems([]);
     }
 
-    fetchData();
-  }, [id]);
+    if(wristbandId) {
+      fetchData();
+    }
+  }, [wristbandId]);
 
 
   const handleAddItem = (product: Product) => {
@@ -94,7 +102,17 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
   }
   
   const handleRemoveItem = (productId: string) => {
-    setOrderItems(prevItems => prevItems.filter(item => item.productId !== productId));
+    setOrderItems(prevItems => {
+        const existingItem = prevItems.find(item => item.productId === productId);
+        if (existingItem && existingItem.quantity > 1) {
+            return prevItems.map(item => 
+                item.productId === productId 
+                    ? { ...item, quantity: item.quantity - 1 } 
+                    : item
+            );
+        }
+        return prevItems.filter(item => item.productId !== productId);
+    });
   };
 
 
@@ -102,7 +120,7 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
     return orderItems.reduce((total, item) => total + item.price * item.quantity, 0)
   }
 
-  const handleSendOrder = () => {
+  const handleSendOrder = async () => {
     if (!user) {
       toast({
         variant: "destructive",
@@ -121,25 +139,39 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
       return
     }
     
-    // In a real app, you would save this order to Firestore.
-    // We will implement this in the next steps.
-    console.log({
-        comandaId: id, // This could be a wristband ID or a table ID
-        waiterId: user.id,
-        waiterName: user.name,
-        items: orderItems,
-        total: calculateTotal()
-    });
+    try {
+      const orderData = {
+          comandaId: wristbandId,
+          customerId: customer?.id,
+          customerName: customer?.name,
+          waiterId: user.id,
+          waiterName: user.name,
+          items: orderItems,
+          total: calculateTotal(),
+          status: 'Pending',
+          createdAt: serverTimestamp(),
+          tableId: customer?.tableId || null,
+      };
 
-    toast({
-      title: "Pedido Enviado",
-      description: `O pedido para a comanda ${id} foi enviado.`,
-    })
+      await addDoc(collection(db, "orders"), orderData);
 
-    router.push("/dashboard/customers"); // Go back to the customer list
+      toast({
+        title: "Pedido Enviado",
+        description: `O pedido para a comanda ${wristbandId} foi enviado.`,
+      })
+
+      router.push("/dashboard/customers");
+    } catch(error) {
+        console.error("Error sending order: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Enviar Pedido",
+            description: "Ocorreu um erro ao salvar o pedido no banco de dados.",
+        })
+    }
   }
 
-  const kitchenProducts = allProducts.filter(p => p.department === "Kitchen")
+  const kitchenProducts = allProducts.filter(p => p.department === "Cozinha")
   const barProducts = allProducts.filter(p => p.department === "Bar")
 
   return (
@@ -230,7 +262,7 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
                   <span>Total</span>
                   <span>${calculateTotal().toFixed(2)}</span>
                 </div>
-                <Button className="w-full" size="lg" onClick={handleSendOrder}>Enviar Pedido para a Cozinha/Bar</Button>
+                <Button className="w-full" size="lg" onClick={handleSendOrder}>Enviar Pedido</Button>
               </CardFooter>
             </>
           )}
@@ -239,3 +271,5 @@ export default function OrderPage({ params }: { params: { tableId: string } }) {
     </div>
   )
 }
+
+    
