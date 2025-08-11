@@ -75,23 +75,26 @@ export default function CashierPage() {
       const customerData = { id: customerSnapshot.docs[0].id, ...customerSnapshot.docs[0].data() } as Customer
       setCustomer(customerData)
 
-      // Find pending orders for that comanda
+      // Find all orders for that comanda
       const ordersRef = collection(db, "orders")
-      const qOrders = query(ordersRef, where("comandaId", "==", comandaId), where("status", "!=", "Completed"))
+      const qOrders = query(ordersRef, where("comandaId", "==", comandaId))
       const ordersSnapshot = await getDocs(qOrders)
+      
+      const allOrdersForComanda = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[]
+      const pendingOrders = allOrdersForComanda.filter(order => order.status !== "Completed");
 
-      if (ordersSnapshot.empty) {
+      if (pendingOrders.length === 0) {
         toast({
           title: "Nenhum pedido pendente",
           description: `O cliente ${customerData.name} não possui pedidos pendentes para fechar.`,
         })
         // Still show customer info, but with no orders
+        setOrders([]);
         setIsLoading(false)
         return
       }
 
-      const ordersList = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[]
-      setOrders(ordersList)
+      setOrders(pendingOrders)
 
     } catch (error) {
       console.error("Error searching comanda: ", error)
