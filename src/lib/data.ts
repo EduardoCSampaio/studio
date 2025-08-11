@@ -18,6 +18,7 @@ export type OrderItem = {
   price: number;
   quantity: number;
   department: 'Cozinha' | 'Bar';
+  status?: 'Cancelled';
 };
 
 export type Order = {

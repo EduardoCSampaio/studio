@@ -48,8 +48,12 @@ export default function KitchenPage() {
   const getKitchenItems = (items: OrderItem[]) => {
     return items
       .filter(item => item.department === 'Cozinha')
-      .map(item => `${item.quantity}x ${item.name}`)
-      .join(', ');
+      .map(item => (
+        <span key={item.productId} className={item.status === 'Cancelled' ? 'line-through text-muted-foreground' : ''}>
+            {item.quantity}x {item.name}
+        </span>
+      ))
+      .reduce((prev, curr) => [prev, ', ', curr] as any)
   }
 
   return (
@@ -64,9 +68,9 @@ export default function KitchenPage() {
         <CardHeader>
           <CardTitle>Pedidos na Fila</CardTitle>
           <CardDescription>
-            Lista de todos os pedidos que a cozinha precisa preparar.
+            Lista de todos os pedidos que a cozinha precisa preparar. Itens cancelados são riscados.
           </CardDescription>
-        </Header>
+        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>

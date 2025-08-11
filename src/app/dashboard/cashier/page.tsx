@@ -122,11 +122,8 @@ export default function CashierPage() {
     const batch = writeBatch(db);
 
     orders.forEach(order => {
-        // Only update orders that still have items.
-        if (order.items.length > 0) {
-            const orderRef = doc(db, "orders", order.id);
-            batch.update(orderRef, { status: "Completed" });
-        }
+        const orderRef = doc(db, "orders", order.id);
+        batch.update(orderRef, { status: "Completed" });
     });
 
     try {
@@ -157,35 +154,40 @@ export default function CashierPage() {
 
     setIsLoading(true);
     try {
-        // Find the specific order in the local state
         const orderToUpdate = orders.find(o => o.id === orderId);
         if (!orderToUpdate) {
             throw new Error("Pedido não encontrado no estado local.");
         }
 
-        // Filter out the item to be cancelled
-        const updatedItems = orderToUpdate.items.filter((_, index) => index !== originalIndex);
+        // Create a new items array with the cancelled item's status updated
+        const updatedItems = orderToUpdate.items.map((item, index) => {
+            if (index === originalIndex) {
+                return { ...item, status: 'Cancelled' as const };
+            }
+            return item;
+        });
+
+        // Recalculate the total, ignoring cancelled items
+        const updatedTotal = updatedItems
+            .filter(item => item.status !== 'Cancelled')
+            .reduce((acc, item) => acc + (item.price * item.quantity), 0);
         
-        // Recalculate the total for that specific order
-        const updatedTotal = updatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-        
-        // Update the order in Firestore
         const orderRef = doc(db, "orders", orderId);
         await updateDoc(orderRef, {
             items: updatedItems,
             total: updatedTotal,
         });
 
-        // Update the local state to reflect the change immediately
+        // Update local state
         setOrders(prevOrders => prevOrders.map(order => 
             order.id === orderId 
                 ? { ...order, items: updatedItems, total: updatedTotal } 
                 : order
-        ).filter(order => order.items.length > 0)); // Also remove order if it becomes empty
+        ));
 
         toast({
             title: "Item Cancelado",
-            description: `${itemToCancel.name} foi removido da comanda.`,
+            description: `${itemToCancel.name} foi marcado como cancelado.`,
         });
 
     } catch (error) {
@@ -193,7 +195,7 @@ export default function CashierPage() {
         toast({
             variant: "destructive",
             title: "Erro ao Cancelar",
-            description: "Não foi possível remover o item do pedido.",
+            description: "Não foi possível atualizar o item do pedido.",
         });
     } finally {
         setIsLoading(false);
@@ -201,7 +203,14 @@ export default function CashierPage() {
   };
 
 
-  const calculateSubtotal = () => orders.reduce((acc, order) => acc + order.total, 0);
+  const calculateSubtotal = () => 
+    orders.reduce((acc, order) => {
+        const orderTotal = order.items
+            .filter(item => item.status !== 'Cancelled')
+            .reduce((orderAcc, item) => orderAcc + (item.price * item.quantity), 0);
+        return acc + orderTotal;
+    }, 0);
+
   const subtotal = calculateSubtotal();
   const serviceFee = subtotal * 0.10;
   const total = subtotal + serviceFee;
@@ -210,7 +219,7 @@ export default function CashierPage() {
     order.items.map((item, index) => ({ 
         ...item, 
         orderId: order.id,
-        originalIndex: index, // Keep track of the item's original position in its order's array
+        originalIndex: index,
     }))
   );
 
@@ -271,13 +280,18 @@ export default function CashierPage() {
                     </TableHeader>
                     <TableBody>
                         {allItems.map((item, index) => (
-                             <TableRow key={`${item.orderId}-${item.productId}-${index}`}>
-                                <TableCell>{item.name}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell className="text-right">R$ {item.price.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">R$ {(item.price * item.quantity).toFixed(2)}</TableCell>
+                             <TableRow key={`${item.orderId}-${item.productId}-${index}`} className={item.status === 'Cancelled' ? 'text-muted-foreground' : ''}>
+                                <TableCell className={item.status === 'Cancelled' ? 'line-through' : ''}>{item.name}</TableCell>
+                                <TableCell className={item.status === 'Cancelled' ? 'line-through' : ''}>{item.quantity}</TableCell>
+                                <TableCell className={`text-right ${item.status === 'Cancelled' ? 'line-through' : ''}`}>R$ {item.price.toFixed(2)}</TableCell>
+                                <TableCell className={`text-right ${item.status === 'Cancelled' ? 'line-through' : ''}`}>R$ {(item.price * item.quantity).toFixed(2)}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => handleCancelItem(item)} disabled={isLoading}>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleCancelItem(item)} 
+                                        disabled={isLoading || item.status === 'Cancelled'}
+                                    >
                                         <XCircle className="h-4 w-4 text-destructive" />
                                         <span className="sr-only">Cancelar item</span>
                                     </Button>

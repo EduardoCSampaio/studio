@@ -49,8 +49,12 @@ export default function BarPage() {
   const getBarItems = (items: OrderItem[]) => {
     return items
       .filter(item => item.department === 'Bar')
-      .map(item => `${item.quantity}x ${item.name}`)
-      .join(', ');
+      .map(item => (
+        <span key={item.productId} className={item.status === 'Cancelled' ? 'line-through text-muted-foreground' : ''}>
+          {item.quantity}x {item.name}
+        </span>
+      ))
+      .reduce((prev, curr) => [prev, ', ', curr] as any)
   }
 
   return (
@@ -65,7 +69,7 @@ export default function BarPage() {
         <CardHeader>
           <CardTitle>Pedidos Pendentes</CardTitle>
           <CardDescription>
-            Lista de todos os pedidos de bebidas que precisam ser preparados.
+            Lista de todos os pedidos de bebidas que precisam ser preparados. Itens cancelados são riscados.
           </CardDescription>
         </CardHeader>
         <CardContent>
