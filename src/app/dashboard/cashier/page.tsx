@@ -35,6 +35,7 @@ import { type Order, type Customer, type OrderItem } from "@/lib/data"
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc, collectionGroup } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { XCircle } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 type ItemWithOrderId = OrderItem & { 
     orderId: string;
@@ -51,6 +52,7 @@ export default function CashierPage() {
   const [isClosing, setIsClosing] = React.useState(false)
   const [itemToCancel, setItemToCancel] = React.useState<ItemWithOrderId | null>(null)
   const [cancelQuantity, setCancelQuantity] = React.useState("1")
+  const [paymentMethod, setPaymentMethod] = React.useState<"dinheiro" | "credito" | "debito">("credito");
 
   const handleSearchComanda = async () => {
     if (!comandaId) {
@@ -121,14 +123,15 @@ export default function CashierPage() {
 
     orders.forEach(order => {
         const orderRef = doc(db, "orders", order.id);
-        batch.update(orderRef, { status: "Completed" });
+        // Em um futuro próximo, podemos salvar o `paymentMethod` aqui.
+        batch.update(orderRef, { status: "Completed", paymentMethod });
     });
 
     try {
         await batch.commit();
         toast({
-            title: "Comanda Fechada!",
-            description: `A comanda #${comandaId} foi fechada com sucesso.`,
+            title: "Conta Fechada!",
+            description: `A conta da comanda #${comandaId} foi fechada com sucesso.`,
         });
         // Reset state after closing
         setComandaId("");
@@ -139,7 +142,7 @@ export default function CashierPage() {
         console.error("Error closing comanda: ", error);
         toast({
             variant: "destructive",
-            title: "Erro ao fechar comanda",
+            title: "Erro ao fechar conta",
             description: "Não foi possível atualizar os pedidos.",
         });
     } finally {
@@ -299,7 +302,7 @@ export default function CashierPage() {
       {(customer || orders.length > 0) && (
         <Card>
           <CardHeader>
-            <CardTitle>Comanda #{comandaId} {customer && `- ${customer.name}`}</CardTitle>
+            <CardTitle>Conta da Comanda #{comandaId} {customer && `- ${customer.name}`}</CardTitle>
             {customer && (
                 <CardDescription>
                 CPF: {customer.cpf} | Check-in: {new Date(customer.checkIn).toLocaleString()}
@@ -356,7 +359,7 @@ export default function CashierPage() {
           {orders.length > 0 && (
              <CardFooter className="justify-end">
                 <Button onClick={() => setIsClosing(true)} disabled={isLoading}>
-                    Fechar Comanda
+                    Fechar Conta
                 </Button>
              </CardFooter>
           )}
@@ -367,13 +370,34 @@ export default function CashierPage() {
     <Dialog open={isClosing} onOpenChange={setIsClosing}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Confirmar Fechamento</DialogTitle>
+                <DialogTitle>Confirmar Fechamento da Conta</DialogTitle>
                 <DialogDescription>
-                    Você está prestes a fechar a comanda #{comandaId} para {customer?.name}.
-                    O valor total é de R$ {total.toFixed(2)} (incluindo 10% de serviço).
-                    Esta ação não pode ser desfeita.
+                    Você está prestes a fechar a conta da comanda #{comandaId} para {customer?.name}.
+                    O valor total é de R$ {total.toFixed(2)}. Esta ação finalizará a venda.
                 </DialogDescription>
             </DialogHeader>
+            <div className="py-4 space-y-4">
+                <Label>Método de Pagamento</Label>
+                <RadioGroup 
+                    defaultValue="credito" 
+                    className="flex gap-4"
+                    value={paymentMethod}
+                    onValueChange={(value) => setPaymentMethod(value as any)}
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="dinheiro" id="r-dinheiro" />
+                        <Label htmlFor="r-dinheiro">Dinheiro</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="credito" id="r-credito" />
+                        <Label htmlFor="r-credito">Crédito</Label>
+                    </div>
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="debito" id="r-debito" />
+                        <Label htmlFor="r-debito">Débito</Label>
+                    </div>
+                </RadioGroup>
+            </div>
             <DialogFooter>
                 <DialogClose asChild>
                     <Button variant="outline" disabled={isLoading}>Cancelar</Button>
@@ -418,3 +442,5 @@ export default function CashierPage() {
     </>
   )
 }
+
+    
