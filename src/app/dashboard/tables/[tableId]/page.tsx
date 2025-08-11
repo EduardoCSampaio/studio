@@ -57,7 +57,6 @@ export default function OrderPage() {
   const { toast } = useToast()
   const { user } = useAuth()
 
-  // The param is now a wristbandId, but we keep the name for route consistency
   const wristbandId = params.tableId as string;
   const tableIdFromQuery = searchParams.get('tableId');
   
@@ -72,7 +71,6 @@ export default function OrderPage() {
 
   React.useEffect(() => {
     async function fetchData() {
-      // Fetch all products for the menu
       const productsCol = collection(db, 'products');
       const productSnapshot = await getDocs(productsCol);
       const productList = productSnapshot.docs.map(doc => ({
@@ -81,7 +79,6 @@ export default function OrderPage() {
       })) as Product[];
       setAllProducts(productList);
 
-      // Fetch the customer data using the wristbandId
       if (wristbandId) {
           const customersRef = collection(db, "customers");
           const q = query(customersRef, where("wristbandId", "==", parseInt(wristbandId, 10)));
@@ -106,7 +103,7 @@ export default function OrderPage() {
   React.useEffect(() => {
     if (printableOrder && printRef.current) {
         window.print();
-        setPrintableOrder(null); 
+        setPrintableOrder(null);
     }
   }, [printableOrder]);
 
@@ -154,7 +151,7 @@ export default function OrderPage() {
     return items.reduce((total, item) => total + item.price * item.quantity, 0)
   }
 
-  const handleSendOrder = async () => {
+  const handlePrintAndSendOrder = async () => {
     if (!user) {
       toast({
         variant: "destructive",
@@ -210,7 +207,11 @@ export default function OrderPage() {
         title: "Pedido(s) Enviado(s)!",
         description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
       })
-
+      
+      // Trigger printing
+      setPrintableOrder(orderItems);
+      
+      // Navigate away after sending
       if (user.role === 'Garçom') {
           router.push("/dashboard/waiter");
       } else {
@@ -226,19 +227,6 @@ export default function OrderPage() {
         })
     }
   }
-
-  const handlePrint = () => {
-    if (orderItems.length > 0) {
-        setPrintableOrder(orderItems);
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Pedido Vazio",
-            description: "Não há itens para imprimir."
-        });
-    }
-  }
-
 
   const kitchenProducts = allProducts.filter(p => p.department === "Cozinha")
   const barProducts = allProducts.filter(p => p.department === "Bar")
@@ -260,7 +248,7 @@ export default function OrderPage() {
                 {kitchenProducts.map((product) => (
                   <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
                       <span className="font-semibold">{product.name}</span>
-                      <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
                   </Button>
                 ))}
                  {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível.</p>}
@@ -270,7 +258,7 @@ export default function OrderPage() {
                  {barProducts.map((product) => (
                   <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
                       <span className="font-semibold">{product.name}</span>
-                      <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
                   </Button>
                 ))}
                 {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível.</p>}
@@ -308,7 +296,7 @@ export default function OrderPage() {
                     <TableRow key={item.productId}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
-                      <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">R$ {(item.price * item.quantity).toFixed(2)}</TableCell>
                        <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.productId)}>
                           <Trash2 className="h-4 w-4" />
@@ -330,14 +318,13 @@ export default function OrderPage() {
               <CardFooter className="flex flex-col gap-4 !p-6">
                 <div className="w-full flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>${calculateTotal(orderItems).toFixed(2)}</span>
+                  <span>R$ {calculateTotal(orderItems).toFixed(2)}</span>
                 </div>
                 <div className="w-full flex gap-2">
-                    <Button className="w-full" size="lg" variant="outline" onClick={handlePrint}>
+                    <Button className="w-full" size="lg" onClick={handlePrintAndSendOrder}>
                         <Printer className="mr-2 h-4 w-4" />
-                        Imprimir Comanda
+                        Imprimir e Enviar Pedido
                     </Button>
-                    <Button className="w-full" size="lg" onClick={handleSendOrder}>Enviar Pedido</Button>
                 </div>
               </CardFooter>
             </>

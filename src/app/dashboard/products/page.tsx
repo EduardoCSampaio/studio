@@ -141,7 +141,7 @@ export default function ProductsPage() {
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.department}</TableCell>
-                    <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">R$ {product.price.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
                  {products.length === 0 && (
