@@ -34,9 +34,9 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { collection, query, where, Timestamp, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp } from "firebase/firestore"
+import { collection, query, where, Timestamp, getDocs, addDoc, onSnapshot, orderBy, serverTimestamp, doc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { BookCheck, FileText, Users, DollarSign, XCircle, AlertTriangle } from "lucide-react"
+import { BookCheck, FileText, Users, DollarSign, XCircle, AlertTriangle, RotateCcw } from "lucide-react"
 
 export default function ReportsPage() {
   const { user } = useAuth()
@@ -44,6 +44,7 @@ export default function ReportsPage() {
   const [closings, setClosings] = React.useState<DailyClosing[]>([])
   const [isClosing, setIsClosing] = React.useState(false)
   const [isConfirming, setConfirming] = React.useState(false)
+  const [isReopening, setReopening] = React.useState(false)
   const [isClosedToday, setClosedToday] = React.useState(false)
   const [lastClosing, setLastClosing] = React.useState<DailyClosing | null>(null)
 
@@ -72,6 +73,9 @@ export default function ReportsPage() {
             
             setClosedToday(isSameDay);
             setLastClosing(last);
+        } else {
+            setClosedToday(false);
+            setLastClosing(null);
         }
     });
 
@@ -158,6 +162,29 @@ export default function ReportsPage() {
     }
   }
 
+  const handleReopenCashier = async () => {
+    if (!lastClosing) return;
+
+    setIsClosing(true);
+    try {
+        await deleteDoc(doc(db, "dailyClosings", lastClosing.id));
+        toast({
+            title: "Caixa Reaberto!",
+            description: "O relatório de fechamento de hoje foi excluído."
+        });
+    } catch (error) {
+        console.error("Error reopening cashier:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Reabrir Caixa",
+            description: "Não foi possível excluir o relatório de fechamento."
+        });
+    } finally {
+        setIsClosing(false);
+        setReopening(false);
+    }
+  }
+
 
   return (
     <>
@@ -169,10 +196,18 @@ export default function ReportsPage() {
             Visualize o histórico de fechamentos de caixa ou realize o fechamento do dia.
           </p>
         </div>
-        <Button onClick={() => setConfirming(true)} disabled={isClosing || isClosedToday}>
-          <BookCheck className="mr-2 h-4 w-4" />
-          {isClosedToday ? 'Dia Já Fechado' : 'Realizar Fechamento do Dia'}
-        </Button>
+        <div className="flex gap-2">
+            {isClosedToday && user?.role === 'Chefe' && (
+                 <Button onClick={() => setReopening(true)} disabled={isClosing} variant="destructive">
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reabrir Caixa do Dia
+                </Button>
+            )}
+            <Button onClick={() => setConfirming(true)} disabled={isClosing || isClosedToday}>
+                <BookCheck className="mr-2 h-4 w-4" />
+                {isClosedToday ? 'Dia Já Fechado' : 'Realizar Fechamento do Dia'}
+            </Button>
+        </div>
       </div>
 
       {isClosedToday && lastClosing && (
@@ -294,7 +329,7 @@ export default function ReportsPage() {
       )}
     </div>
 
-     {/* Confirmation Dialog */}
+     {/* Closing Confirmation Dialog */}
       <Dialog open={isConfirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogHeader>
@@ -317,8 +352,33 @@ export default function ReportsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+    {/* Reopening Confirmation Dialog */}
+      <Dialog open={isReopening} onOpenChange={setReopening}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Reabertura de Caixa</DialogTitle>
+            <DialogDescription>
+                Você está prestes a <span className="font-bold">excluir o relatório de fechamento</span> do dia de hoje.
+                Isso irá reabrir o caixa, permitindo que novas vendas sejam registradas e um novo fechamento seja feito mais tarde.
+                <br /><br />
+                <span className="font-semibold text-destructive">Esta ação não pode ser desfeita.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isClosing}>Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleReopenCashier} disabled={isClosing} variant="destructive">
+              {isClosing ? "Excluindo..." : "Confirmar e Reabrir Caixa"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
+
+    
 
     
