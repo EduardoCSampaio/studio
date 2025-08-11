@@ -35,7 +35,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
 import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc, getDocs } from "firebase/firestore"
 import { format } from "date-fns"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 
 const initialSalesData = [
@@ -57,6 +57,7 @@ function OrderReceipt({ order }: { order: Order }) {
   const [receiptDate, setReceiptDate] = React.useState<Date | null>(null);
 
   React.useEffect(() => {
+    // This runs only on the client, avoiding server/client mismatch
     setReceiptDate(new Date());
   }, []);
 
@@ -69,7 +70,7 @@ function OrderReceipt({ order }: { order: Order }) {
       </div>
       <div className="mb-4">
         <p><span className="font-semibold">Comanda:</span> {order.comandaId}</p>
-        <p><span className="font-semibold">Mesa:</span> {order.tableId}</p>
+        <p><span className="font-semibold">Mesa:</span> {order.tableId || 'N/A'}</p>
         <p><span className="font-semibold">Garçom:</span> {order.waiterName}</p>
         <p><span className="font-semibold">Data:</span> {receiptDate ? receiptDate.toLocaleString() : '...'}</p>
       </div>
@@ -151,6 +152,7 @@ export default function DashboardPage() {
   }
 
   const handleCompleteOrder = async (orderId: string) => {
+    if (!selectedOrder) return;
     const orderRef = doc(db, "orders", orderId);
     try {
         await updateDoc(orderRef, {
@@ -158,7 +160,7 @@ export default function DashboardPage() {
         });
         toast({
           title: "Pedido Concluído",
-          description: `O pedido #${selectedOrder?.comandaId} foi marcado como concluído.`,
+          description: `O pedido #${selectedOrder.comandaId} foi marcado como concluído.`,
         })
         setDialogOpen(false)
     } catch (error) {
@@ -176,7 +178,7 @@ export default function DashboardPage() {
     setTimeout(() => {
       window.print();
       setPrintableOrder(null);
-    }, 100);
+    }, 100); // Small delay to allow state to update and component to render
   };
   
   const renderOrderRow = (order: Order) => (
@@ -213,241 +215,246 @@ export default function DashboardPage() {
 
   return (
     <>
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-4xl font-headline font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Acompanhe em tempo real os pedidos do restaurante.
-          </p>
-        </div>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento Total (Concluído)</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R${totalRevenue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Faturamento dos pedidos pagos</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos Concluídos</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+{completedOrders}</div>
-            <p className="text-xs text-muted-foreground">Total de pedidos finalizados</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos Pendentes</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingOrders}</div>
-            <p className="text-xs text-muted-foreground">Pedidos na fila para preparo</p>
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes na Casa</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+{customersToday.length}</div>
-            <p className="text-xs text-muted-foreground">Check-ins realizados hoje</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-           <CardHeader>
-            <CardTitle>Visão Geral de Faturamento</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-             <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={salesData}>
-                <XAxis
-                  dataKey="name"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `R$${value}`}
-                />
-                <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Vendas Recentes</CardTitle>
-            <CardDescription>
-              Você concluiu {completedOrders} vendas hoje.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             {recentSales.length > 0 ? (
-                 recentSales.map(order => (
-                    <div key={order.id} className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                             <Avatar className="h-9 w-9">
-                                <AvatarFallback>{order.customerName ? order.customerName.charAt(0) : 'C'}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="text-sm font-medium leading-none">{order.customerName || `Comanda ${order.comandaId}`}</p>
-                                <p className="text-sm text-muted-foreground">{order.waiterName}</p>
-                            </div>
-                        </div>
-                        <div className="ml-auto font-medium">+R${order.total.toFixed(2)}</div>
-                    </div>
-                 ))
-             ) : (
-                <div className="text-center text-muted-foreground py-8">
-                    Nenhuma venda recente para exibir.
-                </div>
-             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">Todos os Pedidos</TabsTrigger>
-          <TabsTrigger value="kitchen">Cozinha</TabsTrigger>
-          <TabsTrigger value="bar">Bar</TabsTrigger>
-        </TabsList>
-        <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>Todos os Pedidos Ativos & Concluídos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Comanda</TableHead>
-                    <TableHead>Mesa</TableHead>
-                    <TableHead>Garçom</TableHead>
-                    <TableHead>Itens</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido encontrado.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="kitchen">
-           <Card>
-            <CardHeader>
-              <CardTitle>Pedidos Ativos da Cozinha</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Comanda</TableHead>
-                    <TableHead>Mesa</TableHead>
-                    <TableHead>Garçom</TableHead>
-                    <TableHead>Itens</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {kitchenOrders.length > 0 ? kitchenOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido ativo na cozinha.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="bar">
-            <Card>
-            <CardHeader>
-              <CardTitle>Pedidos Ativos do Bar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Comanda</TableHead>
-                    <TableHead>Mesa</TableHead>
-                    <TableHead>Garçom</TableHead>
-                    <TableHead>Itens</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {barOrders.length > 0 ? barOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido ativo no bar.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-
-    {selectedOrder && (
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="font-headline">Pedido #{selectedOrder.comandaId}</DialogTitle>
-            <DialogDescription>
-              Mesa: {selectedOrder.tableId} - Garçom: {selectedOrder.waiterName} - Status: {selectedOrder.status}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {selectedOrder.items.map((item, index) => (
-              <div key={index} className="flex justify-between items-center">
-                <span>{item.quantity} x {item.name}</span>
-                <span className="font-mono">R${(item.price * item.quantity).toFixed(2)}</span>
-              </div>
-            ))}
-            <div className="border-t pt-4 mt-2 flex justify-between font-bold text-lg">
-              <span>Total</span>
-              <span>R${selectedOrder.total.toFixed(2)}</span>
-            </div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-headline font-bold text-foreground">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Acompanhe em tempo real os pedidos do restaurante.
+            </p>
           </div>
-          <DialogFooter>
-             <Button variant="ghost" onClick={() => handlePrint(selectedOrder)}>
-              <Printer className="mr-2 h-4 w-4" /> Imprimir Recibo
-            </Button>
-            {selectedOrder.status !== 'Completed' && (
-              <Button onClick={() => handleCompleteOrder(selectedOrder.id)}>
-                <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Concluído
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Faturamento Total (Concluído)</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">R${totalRevenue.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">Faturamento dos pedidos pagos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pedidos Concluídos</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+{completedOrders}</div>
+              <p className="text-xs text-muted-foreground">Total de pedidos finalizados</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pedidos Pendentes</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingOrders}</div>
+              <p className="text-xs text-muted-foreground">Pedidos na fila para preparo</p>
+            </CardContent>
+          </Card>
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clientes na Casa</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+{customersToday.length}</div>
+              <p className="text-xs text-muted-foreground">Check-ins realizados hoje</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
+             <CardHeader>
+              <CardTitle>Visão Geral de Faturamento</CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+               <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={salesData}>
+                  <XAxis
+                    dataKey="name"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `R$${value}`}
+                  />
+                  <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>Vendas Recentes</CardTitle>
+              <CardDescription>
+                Você concluiu {completedOrders} vendas hoje.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+               {recentSales.length > 0 ? (
+                   recentSales.map(order => (
+                      <div key={order.id} className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                               <Avatar className="h-9 w-9">
+                                  <AvatarImage src={`https://i.pravatar.cc/40?u=${order.customerId}`} alt={order.customerName} />
+                                  <AvatarFallback>{order.customerName ? order.customerName.charAt(0) : 'C'}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                  <p className="text-sm font-medium leading-none">{order.customerName || `Comanda ${order.comandaId}`}</p>
+                                  <p className="text-sm text-muted-foreground">{order.waiterName}</p>
+                              </div>
+                          </div>
+                          <div className="ml-auto font-medium">+R${order.total.toFixed(2)}</div>
+                      </div>
+                   ))
+               ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                      Nenhuma venda recente para exibir.
+                  </div>
+               )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="all">
+          <TabsList>
+            <TabsTrigger value="all">Todos os Pedidos</TabsTrigger>
+            <TabsTrigger value="kitchen">Cozinha</TabsTrigger>
+            <TabsTrigger value="bar">Bar</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all">
+            <Card>
+              <CardHeader>
+                <CardTitle>Todos os Pedidos Ativos & Concluídos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Comanda</TableHead>
+                      <TableHead>Mesa</TableHead>
+                      <TableHead>Garçom</TableHead>
+                      <TableHead>Itens</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido encontrado.</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="kitchen">
+             <Card>
+              <CardHeader>
+                <CardTitle>Pedidos Ativos da Cozinha</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Comanda</TableHead>
+                      <TableHead>Mesa</TableHead>
+                      <TableHead>Garçom</TableHead>
+                      <TableHead>Itens</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {kitchenOrders.length > 0 ? kitchenOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido ativo na cozinha.</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="bar">
+              <Card>
+              <CardHeader>
+                <CardTitle>Pedidos Ativos do Bar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Comanda</TableHead>
+                      <TableHead>Mesa</TableHead>
+                      <TableHead>Garçom</TableHead>
+                      <TableHead>Itens</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {barOrders.length > 0 ? barOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={7} className="text-center h-24">Nenhum pedido ativo no bar.</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {selectedOrder && (
+        <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="font-headline">Pedido #{selectedOrder.comandaId}</DialogTitle>
+              <DialogDescription>
+                Mesa: {selectedOrder.tableId || 'N/A'} - Garçom: {selectedOrder.waiterName} - Status: {selectedOrder.status}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {selectedOrder.items.map((item, index) => (
+                <div key={index} className="flex justify-between items-center">
+                  <span>{item.quantity} x {item.name}</span>
+                  <span className="font-mono">R${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="border-t pt-4 mt-2 flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span>R${selectedOrder.total.toFixed(2)}</span>
+              </div>
+            </div>
+            <DialogFooter>
+               <Button variant="ghost" onClick={() => handlePrint(selectedOrder)}>
+                <Printer className="mr-2 h-4 w-4" /> Imprimir Recibo
               </Button>
-            )}
-            <DialogClose asChild>
-                <Button variant="outline">Fechar</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    )}
-    
-    {printableOrder && <div className="printable-area"><OrderReceipt order={printableOrder} /></div>}
+              {selectedOrder.status !== 'Completed' && (
+                <Button onClick={() => handleCompleteOrder(selectedOrder.id)}>
+                  <CheckCircle className="mr-2 h-4 w-4" /> Marcar como Concluído
+                </Button>
+              )}
+              <DialogClose asChild>
+                  <Button variant="outline">Fechar</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {printableOrder && (
+        <div className="printable-area">
+          <OrderReceipt order={printableOrder} />
+        </div>
+      )}
     </>
   )
 }
