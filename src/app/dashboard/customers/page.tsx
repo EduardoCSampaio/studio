@@ -32,11 +32,7 @@ import { Label } from "@/components/ui/label"
 import { PlusCircle } from "lucide-react"
 import { type Customer } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
-import { cn } from "@/lib/utils"
 import { collection, addDoc, onSnapshot, query, where, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import Link from "next/link"
@@ -46,7 +42,7 @@ export default function CustomersPage() {
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const [newCustomerName, setNewCustomerName] = React.useState("")
   const [newCustomerCpf, setNewCustomerCpf] = React.useState("")
-  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState<Date | undefined>()
+  const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState("")
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
 
@@ -81,15 +77,26 @@ export default function CustomersPage() {
     }
 
     try {
+        const dateParts = newCustomerBirthDate.split('/');
+        const birthDateObject = new Date(+dateParts[2], parseInt(dateParts[1]) - 1, +dateParts[0]);
+
+        if (isNaN(birthDateObject.getTime())) {
+            toast({
+                variant: "destructive",
+                title: "Data de nascimento inválida",
+                description: "Por favor, use o formato DD/MM/AAAA.",
+            });
+            return;
+        }
+
         const newCustomer: Omit<Customer, 'id'> = {
           name: newCustomerName,
           cpf: newCustomerCpf,
-          birthDate: newCustomerBirthDate,
+          birthDate: birthDateObject,
           wristbandId: parseInt(newWristbandId, 10),
           checkIn: new Date(),
         }
 
-        // We use wristbandId as the document ID for easier lookup
         await addDoc(collection(db, "customers"), newCustomer)
         
         toast({
@@ -99,7 +106,7 @@ export default function CustomersPage() {
 
         setNewCustomerName("")
         setNewCustomerCpf("")
-        setNewCustomerBirthDate(undefined)
+        setNewCustomerBirthDate("")
         setNewWristbandId("")
         setDialogOpen(false)
     } catch (error) {
@@ -219,28 +226,13 @@ export default function CustomersPage() {
                <Label htmlFor="birthDate" className="text-right">
                 Nascimento
               </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "col-span-3 justify-start text-left font-normal",
-                      !newCustomerBirthDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newCustomerBirthDate ? format(newCustomerBirthDate, "dd/MM/yyyy") : <span>Selecione uma data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newCustomerBirthDate}
-                    onSelect={setNewCustomerBirthDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Input
+                id="birthDate"
+                value={newCustomerBirthDate}
+                onChange={(e) => setNewCustomerBirthDate(e.target.value)}
+                className="col-span-3"
+                placeholder="DD/MM/AAAA"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="wristbandId" className="text-right">
@@ -267,5 +259,3 @@ export default function CustomersPage() {
     </>
   )
 }
-
-    
