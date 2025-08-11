@@ -121,7 +121,7 @@ export default function CustomersPage() {
                     <TableCell>{customer.cpf}</TableCell>
                     <TableCell>{format(customer.birthDate, 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{customer.wristbandId}</TableCell>
-                    <TableCell>{customer.checkIn.toLocaleString()}</TableCell>
+                    <TableCell>{format(customer.checkIn, 'dd/MM/yyyy HH:mm:ss')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
