@@ -28,8 +28,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { type Order, type Customer } from "@/lib/data"
-import { CheckCircle, DollarSign, Users, CreditCard, Trophy } from "lucide-react"
+import { type Order, type Customer, type OrderItem } from "@/lib/data"
+import { CheckCircle, DollarSign, Users, CreditCard, Trophy, Star, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
@@ -40,19 +40,13 @@ import { useAuth } from "@/hooks/use-auth"
 
 
 const initialSalesData = [
-  { name: "Jan", total: 0 },
-  { name: "Fev", total: 0 },
-  { name: "Mar", total: 0 },
-  { name: "Abr", total: 0 },
-  { name: "Mai", total: 0 },
-  { name: "Jun", total: 0 },
-  { name: "Jul", total: 0 },
-  { name: "Ago", total: 0 },
-  { name: "Set", total: 0 },
-  { name: "Out", total: 0 },
-  { name: "Nov", total: 0 },
-  { name: "Dez", total: 0 },
+  { name: "Jan", total: 0 }, { name: "Fev", total: 0 }, { name: "Mar", total: 0 },
+  { name: "Abr", total: 0 }, { name: "Mai", total: 0 }, { name: "Jun", total: 0 },
+  { name: "Jul", total: 0 }, { name: "Ago", total: 0 }, { name: "Set", total: 0 },
+  { name: "Out", total: 0 }, { name: "Nov", total: 0 }, { name: "Dez", total: 0 },
 ]
+
+const initialPeakHoursData = Array.from({ length: 24 }, (_, i) => ({ name: `${i}h`, total: 0 }));
 
 type WaiterRanking = {
     waiterId: string;
@@ -61,12 +55,21 @@ type WaiterRanking = {
     avatarUrl: string;
 }
 
+type TopProduct = {
+    productId: string;
+    name: string;
+    quantity: number;
+}
+
 export default function DashboardPage() {
   const { getChefeId } = useAuth();
   const [orders, setOrders] = React.useState<Order[]>([])
   const [customersToday, setCustomersToday] = React.useState<Customer[]>([]);
   const [salesData, setSalesData] = React.useState(initialSalesData);
   const [waiterRanking, setWaiterRanking] = React.useState<WaiterRanking[]>([]);
+  const [topProducts, setTopProducts] = React.useState<TopProduct[]>([]);
+  const [peakHoursData, setPeakHoursData] = React.useState(initialPeakHoursData);
+
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const { toast } = useToast()
@@ -82,8 +85,13 @@ export default function DashboardPage() {
             ...doc.data()
         })) as Order[];
         setOrders(ordersList);
-        updateSalesChart(ordersList);
-        updateWaiterRanking(ordersList);
+        
+        const completedOrders = ordersList.filter(order => order.status === 'Completed');
+        
+        updateSalesChart(completedOrders);
+        updateWaiterRanking(completedOrders);
+        updateTopProducts(completedOrders);
+        updatePeakHoursChart(ordersList);
     });
 
     const customersQuery = query(
@@ -112,10 +120,10 @@ export default function DashboardPage() {
     };
   }, [getChefeId])
 
-  const updateSalesChart = (allOrders: Order[]) => {
-      const monthlySales = [...initialSalesData];
-      allOrders.forEach(order => {
-          if (order.createdAt && order.status === 'Completed') {
+  const updateSalesChart = (completedOrders: Order[]) => {
+      const monthlySales = [...initialSalesData].map(m => ({ ...m, total: 0 }));
+      completedOrders.forEach(order => {
+          if (order.createdAt) {
               const orderDate = (order.createdAt as Timestamp).toDate();
               const month = orderDate.getMonth();
               monthlySales[month].total += order.total;
@@ -124,9 +132,7 @@ export default function DashboardPage() {
       setSalesData(monthlySales);
   }
 
-  const updateWaiterRanking = (allOrders: Order[]) => {
-    const completedOrders = allOrders.filter(order => order.status === 'Completed');
-    
+  const updateWaiterRanking = (completedOrders: Order[]) => {
     const salesByWaiter = completedOrders.reduce((acc, order) => {
         if (!acc[order.waiterId]) {
             acc[order.waiterId] = {
@@ -145,6 +151,38 @@ export default function DashboardPage() {
         .slice(0, 5);
         
     setWaiterRanking(rankedWaiters);
+  }
+
+  const updateTopProducts = (completedOrders: Order[]) => {
+    const salesByProduct = completedOrders
+        .flatMap(order => order.items)
+        .reduce((acc, item) => {
+            if (item.status !== 'Cancelled') {
+                if (!acc[item.productId]) {
+                    acc[item.productId] = { productId: item.productId, name: item.name, quantity: 0 };
+                }
+                acc[item.productId].quantity += item.quantity;
+            }
+            return acc;
+        }, {} as Record<string, TopProduct>);
+
+    const rankedProducts = Object.values(salesByProduct)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
+    
+    setTopProducts(rankedProducts);
+  }
+  
+  const updatePeakHoursChart = (allOrders: Order[]) => {
+      const hourlyOrders = [...initialPeakHoursData].map(h => ({ ...h, total: 0 }));
+      allOrders.forEach(order => {
+          if (order.createdAt) {
+              const orderDate = (order.createdAt as Timestamp).toDate();
+              const hour = orderDate.getHours();
+              hourlyOrders[hour].total += 1;
+          }
+      });
+      setPeakHoursData(hourlyOrders);
   }
 
   const handleOpenDialog = (order: Order) => {
@@ -273,7 +311,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
+          <Card className="col-span-full lg:col-span-4">
              <CardHeader>
               <CardTitle>Visão Geral de Faturamento</CardTitle>
             </CardHeader>
@@ -299,7 +337,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-          <Card className="col-span-3">
+          <Card className="col-span-full lg:col-span-3">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-yellow-500" /> Ranking de Garçons
@@ -330,6 +368,63 @@ export default function DashboardPage() {
                       Nenhuma venda concluída por garçons para exibir o ranking.
                   </div>
                )}
+            </CardContent>
+          </Card>
+        </div>
+
+         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+           <Card className="col-span-full lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-amber-500" /> Produtos Mais Vendidos
+              </CardTitle>
+              <CardDescription>
+                Top 5 produtos mais vendidos (vendas concluídas).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+               {topProducts.length > 0 ? (
+                   topProducts.map(product => (
+                      <div key={product.productId} className="flex items-center justify-between mb-4">
+                            <p className="text-sm font-medium leading-none">{product.name}</p>
+                            <div className="ml-auto font-medium text-lg">{product.quantity} vendidos</div>
+                      </div>
+                   ))
+               ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                      Nenhum produto vendido ainda.
+                  </div>
+               )}
+            </CardContent>
+          </Card>
+          <Card className="col-span-full lg:col-span-4">
+             <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-500" /> Horários de Pico
+                </CardTitle>
+                 <CardDescription>Volume de pedidos (todos os status) por hora do dia.</CardDescription>
+            </CardHeader>
+            <CardContent className="pl-2">
+               <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={peakHoursData}>
+                  <XAxis
+                    dataKey="name"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
@@ -458,3 +553,5 @@ export default function DashboardPage() {
     </>
   )
 }
+
+    

@@ -33,22 +33,36 @@ import { PlusCircle, Trash2, Users, ShoppingCart, TrendingUp } from "lucide-reac
 import { type User, UserRole } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc, getDocs, Timestamp } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc, getDocs, Timestamp, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 
 type Chefe = User & {
     createdAt?: Timestamp;
+    lastLogin?: Timestamp;
+    orderCount?: number;
 }
+
+const initialClientGrowthData = [
+  { name: "Jan", total: 0 }, { name: "Fev", total: 0 }, { name: "Mar", total: 0 },
+  { name: "Abr", total: 0 }, { name: "Mai", total: 0 }, { name: "Jun", total: 0 },
+  { name: "Jul", total: 0 }, { name: "Ago", total: 0 }, { name: "Set", total: 0 },
+  { name: "Out", total: 0 }, { name: "Nov", total: 0 }, { name: "Dez", total: 0 },
+]
 
 export default function AdminPage() {
   const [chefs, setChefs] = React.useState<Chefe[]>([])
   const [totalOrders, setTotalOrders] = React.useState(0);
+  const [clientGrowthData, setClientGrowthData] = React.useState(initialClientGrowthData);
+
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isViewTeamDialogOpen, setViewTeamDialogOpen] = React.useState(false);
+  
   const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
   const [selectedChefe, setSelectedChefe] = React.useState<User | null>(null);
+  
   const [teamMembers, setTeamMembers] = React.useState<User[]>([]);
   const [isTeamLoading, setIsTeamLoading] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -63,15 +77,26 @@ export default function AdminPage() {
   React.useEffect(() => {
     const usersCol = collection(db, 'users');
     const q = query(usersCol, where("role", "==", "Chefe"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const chefList = snapshot.docs.map(doc => {
-            const data = doc.data();
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const chefListPromises = snapshot.docs.map(async (chefDoc) => {
+            const data = chefDoc.data();
+            
+            // Get order count for each chef
+            const ordersQuery = query(collection(db, "orders"), where("chefeId", "==", chefDoc.id));
+            const ordersSnapshot = await getDocs(ordersQuery);
+
             return {
-                id: doc.id,
+                id: chefDoc.id,
                 ...data,
+                orderCount: ordersSnapshot.size,
+                lastLogin: data.lastLogin,
             } as Chefe;
         });
+        
+        const chefList = await Promise.all(chefListPromises);
         setChefs(chefList);
+        updateClientGrowthChart(chefList);
     });
 
     const ordersCol = collection(db, 'orders');
@@ -79,12 +104,23 @@ export default function AdminPage() {
         setTotalOrders(snapshot.size);
     });
 
-
     return () => {
         unsubscribe();
         ordersUnsubscribe();
     };
   }, [])
+  
+  const updateClientGrowthChart = (allChefs: Chefe[]) => {
+      const monthlyGrowth = [...initialClientGrowthData];
+      allChefs.forEach(chefe => {
+          if (chefe.createdAt) {
+              const creationDate = chefe.createdAt.toDate();
+              const month = creationDate.getMonth();
+              monthlyGrowth[month].total += 1;
+          }
+      });
+      setClientGrowthData(monthlyGrowth);
+  }
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { id, value } = e.target;
@@ -245,55 +281,82 @@ export default function AdminPage() {
                 </CardContent>
             </Card>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista de Clientes</CardTitle>
-            <CardDescription>
-              Uma lista de todos os usuários com permissão de Chefe (clientes do sistema).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email (Login)</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {chefs.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={'default'}>{user.role}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" title="Ver Equipe" onClick={() => handleViewTeam(user)}>
-                            <Users className="h-4 w-4 text-primary" />
-                            <span className="sr-only">Ver Equipe</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Remover Chefe" onClick={() => openDeleteDialog(user)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">Remover Chefe</span>
-                        </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {chefs.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                      Nenhum Chefe encontrado. Clique em "Adicionar Cliente" para começar.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-5">
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <CardTitle>Lista de Clientes</CardTitle>
+                <CardDescription>
+                  Uma lista de todos os usuários com permissão de Chefe.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Pedidos</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {chefs.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.orderCount || 0}</TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" title="Ver Equipe" onClick={() => handleViewTeam(user)}>
+                                <Users className="h-4 w-4 text-primary" />
+                                <span className="sr-only">Ver Equipe</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Remover Chefe" onClick={() => openDeleteDialog(user)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <span className="sr-only">Remover Chefe</span>
+                            </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {chefs.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                          Nenhum Chefe encontrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+            <Card className="lg:col-span-2">
+                <CardHeader>
+                    <CardTitle>Crescimento de Clientes</CardTitle>
+                    <CardDescription>Novos clientes cadastrados por mês.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={clientGrowthData}>
+                          <XAxis
+                            dataKey="name"
+                            stroke="#888888"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis
+                            stroke="#888888"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            allowDecimals={false}
+                          />
+                          <Bar dataKey="total" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+        </div>
       </div>
 
        <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
@@ -416,3 +479,5 @@ export default function AdminPage() {
     </>
   )
 }
+
+    
