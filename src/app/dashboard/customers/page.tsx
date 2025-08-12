@@ -51,25 +51,26 @@ export default function CustomersPage() {
   React.useEffect(() => {
     const chefeId = getChefeId();
     if (!chefeId) return;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTimestamp = Timestamp.fromDate(today);
-
+    
     const q = query(
         collection(db, "customers"), 
-        where("chefeId", "==", chefeId),
-        where("checkIn", ">=", todayTimestamp)
+        where("chefeId", "==", chefeId)
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       const customersList = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           checkIn: (doc.data().checkIn as Timestamp).toDate(),
-          birthDate: (doc.data().birthDate as Timestamp).toDate(),
+          birthDate: (doc.data().birthDate as Timestamp)?.toDate(),
       })) as Customer[];
-      setCustomers(customersList);
+
+      const todaysCustomers = customersList.filter(customer => customer.checkIn.getTime() >= today.getTime());
+
+      setCustomers(todaysCustomers);
     });
 
     return () => unsubscribe();
