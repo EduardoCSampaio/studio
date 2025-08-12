@@ -28,14 +28,14 @@ export default function AdminLoginPage() {
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
   React.useEffect(() => {
-    if (user) {
+    if (!loading && user) {
         if (user.role === 'Admin') {
             router.push("/dashboard/admin");
         } else {
              router.push("/dashboard");
         }
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
 
   const handleLogin = async () => {

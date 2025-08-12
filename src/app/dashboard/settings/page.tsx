@@ -32,12 +32,24 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function SettingsPage() {
-  const { user, loading, refreshUser } = useAuth();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   const [newPhoto, setNewPhoto] = React.useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    // Quando o usuário for atualizado no contexto (após o upload),
+    // o photoPreview deve ser limpo para refletir o estado salvo
+    if (photoPreview && user?.photoURL && !isUploading) {
+      // Verifica se o preview é diferente da URL do usuário para evitar limpar antes da hora
+      if(photoPreview !== user.photoURL) {
+         setPhotoPreview(null);
+      }
+    }
+  }, [user, photoPreview, isUploading]);
+
 
   const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -73,7 +85,6 @@ export default function SettingsPage() {
             const oldPhotoRef = ref(storage, user.photoURL);
             await deleteObject(oldPhotoRef);
           } catch (error: any) {
-              // Ignora erro se o arquivo não existir (pode acontecer)
               if (error.code !== 'storage/object-not-found') {
                   console.warn("Could not delete old photo:", error);
               }
@@ -89,9 +100,9 @@ export default function SettingsPage() {
       await updateDoc(userDocRef, {
         photoURL: downloadURL,
       });
-      
-      await refreshUser();
 
+      // Não é mais necessário chamar refreshUser. O listener onSnapshot no useAuth cuidará disso.
+      
       resetFileInput();
       toast({
         title: 'Sucesso!',
@@ -122,7 +133,7 @@ export default function SettingsPage() {
         photoURL: "",
       });
 
-      await refreshUser();
+      // O listener onSnapshot no useAuth cuidará da atualização da UI.
 
       resetFileInput();
       toast({
@@ -130,11 +141,9 @@ export default function SettingsPage() {
         description: 'Sua foto de perfil foi removida.',
       });
     } catch (error: any) {
-        // Se o arquivo não existir no storage, mas existir no DB, remove do DB
         if (error.code === 'storage/object-not-found') {
-             const userDocRef = doc(db, 'users', user.id);
+            const userDocRef = doc(db, 'users', user.id);
             await updateDoc(userDocRef, { photoURL: "" });
-            await refreshUser();
             resetFileInput();
              toast({
                 title: 'Sucesso!',
@@ -189,6 +198,7 @@ export default function SettingsPage() {
               size="icon"
               className="absolute bottom-1 right-1 rounded-full"
               onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
             >
               <Camera className="h-5 w-5" />
               <span className="sr-only">Alterar foto</span>
@@ -199,6 +209,7 @@ export default function SettingsPage() {
               className="hidden"
               accept="image/png, image/jpeg, image/gif"
               onChange={handleFileChange}
+              disabled={isUploading}
             />
           </div>
           <div className="text-center sm:text-left">
@@ -207,45 +218,43 @@ export default function SettingsPage() {
             <p className="text-sm font-medium text-primary mt-1">{user.role}</p>
           </div>
         </CardContent>
-        {(photoPreview || user.photoURL) && (
-          <CardFooter className="justify-end gap-2">
-             {photoPreview ? (
-                <>
-                    <Button
-                    variant="ghost"
-                    onClick={resetFileInput}
-                    disabled={isUploading}
-                    >
-                    Cancelar
+        <CardFooter className="justify-end gap-2">
+            {photoPreview ? (
+            <>
+                <Button
+                variant="ghost"
+                onClick={resetFileInput}
+                disabled={isUploading}
+                >
+                Cancelar
+                </Button>
+                <Button onClick={handleSave} disabled={isUploading}>
+                {isUploading ? 'Salvando...' : 'Salvar Nova Foto'}
+                </Button>
+            </>
+            ) : user.photoURL && (
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isUploading}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remover Foto
                     </Button>
-                    <Button onClick={handleSave} disabled={isUploading}>
-                    {isUploading ? 'Salvando...' : 'Salvar Nova Foto'}
-                    </Button>
-                </>
-             ) : (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                         <Button variant="destructive" disabled={isUploading}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Remover Foto
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta ação removerá sua foto de perfil permanentemente. Você poderá adicionar uma nova a qualquer momento.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleRemovePhoto} className="bg-destructive hover:bg-destructive/90">Sim, Remover</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-             )}
-          </CardFooter>
-        )}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta ação removerá sua foto de perfil permanentemente. Você poderá adicionar uma nova a qualquer momento.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRemovePhoto} className="bg-destructive hover:bg-destructive/90">Sim, Remover</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            )}
+        </CardFooter>
       </Card>
     </div>
   );
