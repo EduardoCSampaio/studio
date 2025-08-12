@@ -61,7 +61,7 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // O hook useAuth irá detectar a mudança e redirecionar.
+      // O hook useAuth irá detectar a mudança de estado e redirecionar.
     } catch (error: any) {
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
              toast({
