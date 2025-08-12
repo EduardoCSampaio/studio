@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { type Order, type Customer } from "@/lib/data"
-import { CheckCircle, DollarSign, Users, CreditCard } from "lucide-react"
+import { CheckCircle, DollarSign, Users, CreditCard, Trophy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
@@ -53,10 +53,18 @@ const initialSalesData = [
   { name: "Dez", total: 0 },
 ]
 
+type WaiterRanking = {
+    waiterId: string;
+    waiterName: string;
+    totalSales: number;
+    avatarUrl: string;
+}
+
 export default function DashboardPage() {
   const [orders, setOrders] = React.useState<Order[]>([])
   const [customersToday, setCustomersToday] = React.useState<Customer[]>([]);
   const [salesData, setSalesData] = React.useState(initialSalesData);
+  const [waiterRanking, setWaiterRanking] = React.useState<WaiterRanking[]>([]);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
   const [isDialogOpen, setDialogOpen] = React.useState(false)
   const { toast } = useToast()
@@ -70,6 +78,7 @@ export default function DashboardPage() {
         })) as Order[];
         setOrders(ordersList);
         updateSalesChart(ordersList);
+        updateWaiterRanking(ordersList);
     });
 
     // Listen for customers who checked in today
@@ -99,6 +108,29 @@ export default function DashboardPage() {
           }
       });
       setSalesData(monthlySales);
+  }
+
+  const updateWaiterRanking = (allOrders: Order[]) => {
+    const completedOrders = allOrders.filter(order => order.status === 'Completed');
+    
+    const salesByWaiter = completedOrders.reduce((acc, order) => {
+        if (!acc[order.waiterId]) {
+            acc[order.waiterId] = {
+                waiterId: order.waiterId,
+                waiterName: order.waiterName,
+                totalSales: 0,
+                avatarUrl: `https://i.pravatar.cc/40?u=${order.waiterId}`
+            };
+        }
+        acc[order.waiterId].totalSales += order.total;
+        return acc;
+    }, {} as Record<string, WaiterRanking>);
+
+    const rankedWaiters = Object.values(salesByWaiter)
+        .sort((a, b) => b.totalSales - a.totalSales)
+        .slice(0, 5); // Pega o top 5
+        
+    setWaiterRanking(rankedWaiters);
   }
 
   const handleOpenDialog = (order: Order) => {
@@ -170,8 +202,6 @@ export default function DashboardPage() {
   const totalRevenue = orders.reduce((acc, order) => order.status === 'Completed' ? acc + order.total : acc, 0);
   const completedOrdersCount = orders.filter(order => order.status === 'Completed').length;
   const pendingOrdersCount = orders.filter(order => order.status !== 'Completed').length;
-  const recentSales = orders.filter(o => o.status === 'Completed').slice(0, 5);
-
 
   return (
     <>
@@ -257,31 +287,33 @@ export default function DashboardPage() {
           </Card>
           <Card className="col-span-3">
             <CardHeader>
-              <CardTitle>Vendas Recentes</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" /> Ranking de Garçons
+              </CardTitle>
               <CardDescription>
-                Você concluiu {completedOrdersCount} vendas hoje.
+                Top 5 vendedores com base nas vendas concluídas.
               </CardDescription>
             </CardHeader>
             <CardContent>
-               {recentSales.length > 0 ? (
-                   recentSales.map(order => (
-                      <div key={order.id} className="flex items-center justify-between mb-4">
+               {waiterRanking.length > 0 ? (
+                   waiterRanking.map(waiter => (
+                      <div key={waiter.waiterId} className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
                                <Avatar className="h-9 w-9">
-                                  <AvatarImage src={`https://i.pravatar.cc/40?u=${order.customerId}`} alt={order.customerName} />
-                                  <AvatarFallback>{order.customerName ? order.customerName.charAt(0) : 'C'}</AvatarFallback>
+                                  <AvatarImage src={waiter.avatarUrl} alt={waiter.waiterName} />
+                                  <AvatarFallback>{waiter.waiterName.charAt(0)}</AvatarFallback>
                               </Avatar>
                               <div>
-                                  <p className="text-sm font-medium leading-none">{order.customerName || `Comanda ${order.comandaId}`}</p>
-                                  <p className="text-sm text-muted-foreground">{order.waiterName}</p>
+                                  <p className="text-sm font-medium leading-none">{waiter.waiterName}</p>
+                                  <p className="text-sm text-muted-foreground">ID: {waiter.waiterId.substring(0, 5)}...</p>
                               </div>
                           </div>
-                          <div className="ml-auto font-medium">+R${order.total.toFixed(2)}</div>
+                          <div className="ml-auto font-medium text-lg">+R${waiter.totalSales.toFixed(2)}</div>
                       </div>
                    ))
                ) : (
                   <div className="text-center text-muted-foreground py-8">
-                      Nenhuma venda recente para exibir.
+                      Nenhuma venda concluída por garçons para exibir o ranking.
                   </div>
                )}
             </CardContent>
@@ -412,5 +444,3 @@ export default function DashboardPage() {
     </>
   )
 }
-
-    
