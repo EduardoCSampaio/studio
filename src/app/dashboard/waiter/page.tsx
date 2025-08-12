@@ -14,19 +14,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { collection, query, where, getDocs, onSnapshot, orderBy } from "firebase/firestore"
+import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { type Table } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function WaiterPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { getChefeId } = useAuth()
   const [comandaId, setComandaId] = React.useState("")
-  const [selectedTableId, setSelectedTableId] = React.useState<string | null>(null)
+  const [tableId, setTableId] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [tables, setTables] = React.useState<Table[]>([]);
 
@@ -55,22 +54,14 @@ export default function WaiterPage() {
 
   const handleStartOrder = async () => {
     const chefeId = getChefeId();
-    if (!comandaId) {
+    if (!comandaId || !tableId) {
       toast({
         variant: "destructive",
-        title: "Campo Obrigatório",
-        description: "Por favor, insira o número da comanda/pulseira.",
+        title: "Campos Obrigatórios",
+        description: "Por favor, insira a comanda e o número da mesa.",
       })
       return
     }
-     if (!selectedTableId) {
-        toast({
-          variant: "destructive",
-          title: "Campo Obrigatório",
-          description: "Por favor, selecione uma mesa.",
-        })
-        return
-      }
 
     setIsSubmitting(true);
     
@@ -92,7 +83,7 @@ export default function WaiterPage() {
         return;
     }
 
-    router.push(`/dashboard/tables/${comandaId}?tableId=${selectedTableId}`)
+    router.push(`/dashboard/tables/${comandaId}?tableId=${tableId}`)
   }
 
   const getStatusVariant = (status: 'Disponível' | 'Ocupada' | 'Reservada'): 'default' | 'secondary' | 'destructive' | 'outline' => {
@@ -115,7 +106,7 @@ export default function WaiterPage() {
             <CardHeader>
             <CardTitle className="text-2xl font-bold font-headline">Iniciar Novo Pedido</CardTitle>
             <CardDescription>
-                Insira a comanda e selecione uma mesa disponível para começar.
+                Insira a comanda e a mesa para começar.
             </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -133,29 +124,19 @@ export default function WaiterPage() {
             </div>
             
             <div className="space-y-2">
-                <Label className="text-base">Selecione a Mesa</Label>
-                <ScrollArea className="h-64 rounded-md border">
-                    <div className="p-4 grid grid-cols-3 gap-3">
-                         {tables.map((table) => (
-                             <Button
-                                key={table.id}
-                                variant={selectedTableId === String(table.id) ? "default" : "outline"}
-                                className="h-16 flex flex-col"
-                                onClick={() => setSelectedTableId(String(table.id))}
-                                disabled={table.status !== 'Disponível'}
-                            >
-                                <span className="text-xl font-bold">{table.id}</span>
-                                <span className="text-xs">{table.status}</span>
-                            </Button>
-                        ))}
-                         {tables.length === 0 && (
-                            <p className="col-span-full text-center text-muted-foreground p-4">Nenhuma mesa encontrada.</p>
-                        )}
-                    </div>
-                </ScrollArea>
+                <Label htmlFor="tableId" className="text-base">Número da Mesa</Label>
+                <Input
+                id="tableId"
+                type="number"
+                value={tableId}
+                onChange={(e) => setTableId(e.target.value)}
+                placeholder="Ex: 15"
+                className="h-12 text-lg"
+                disabled={isSubmitting}
+                />
             </div>
             
-            <Button onClick={handleStartOrder} className="w-full h-12 text-lg" disabled={isSubmitting || !selectedTableId}>
+            <Button onClick={handleStartOrder} className="w-full h-12 text-lg" disabled={isSubmitting || !comandaId || !tableId}>
                 {isSubmitting ? 'Verificando...' : 'Lançar Itens'}
             </Button>
             </CardContent>
