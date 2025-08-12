@@ -43,12 +43,11 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 
 export default function ReservationsPage() {
-  const { user } = useAuth()
+  const { user, getChefeId } = useAuth()
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [reservations, setReservations] = React.useState<Reservation[]>([])
   const [nameFilter, setNameFilter] = React.useState("")
   
-  // States for new reservation dialog
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false)
   const [newReservation, setNewReservation] = React.useState({
       name: "",
@@ -60,7 +59,6 @@ export default function ReservationsPage() {
       notes: ""
   })
 
-  // States for edit reservation dialog
   const [isEditDialogOpen, setEditDialogOpen] = React.useState(false);
   const [selectedReservation, setSelectedReservation] = React.useState<Reservation | null>(null);
   const [editingTableId, setEditingTableId] = React.useState("");
@@ -68,6 +66,9 @@ export default function ReservationsPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
     const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
@@ -77,6 +78,7 @@ export default function ReservationsPage() {
     const endOfDayTimestamp = Timestamp.fromDate(endOfDay);
 
     const q = query(collection(db, "reservations"), 
+        where("chefeId", "==", chefeId),
         where("reservationTime", ">=", startOfDayTimestamp),
         where("reservationTime", "<=", endOfDayTimestamp)
     );
@@ -91,7 +93,7 @@ export default function ReservationsPage() {
     });
 
     return () => unsubscribe();
-  }, [selectedDate]);
+  }, [selectedDate, getChefeId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { id, value } = e.target;
@@ -99,7 +101,8 @@ export default function ReservationsPage() {
   }
 
   const handleAddReservation = async () => {
-    if (!newReservation.name || !newReservation.pax || !newReservation.time || !user) {
+    const chefeId = getChefeId();
+    if (!newReservation.name || !newReservation.pax || !newReservation.time || !user || !chefeId) {
       toast({
         variant: "destructive",
         title: "Campos Obrigatórios",
@@ -123,6 +126,7 @@ export default function ReservationsPage() {
           notes: newReservation.notes,
           status: 'Confirmada' as const,
           createdBy: user.id,
+          chefeId: chefeId,
         }
 
         await addDoc(collection(db, "reservations"), reservationToAdd)

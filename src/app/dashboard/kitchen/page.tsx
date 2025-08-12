@@ -20,14 +20,22 @@ import {
 import { type Order, type OrderItem } from "@/lib/data"
 import { collection, onSnapshot, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function KitchenPage() {
+  const { getChefeId } = useAuth();
   const [orders, setOrders] = React.useState<Order[]>([])
 
   React.useEffect(() => {
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
     const ordersCol = collection(db, 'orders');
-    // Query for orders that are not completed. We'll filter for kitchen items on the client.
-    const q = query(ordersCol, where("status", "!=", "Completed"));
+    const q = query(
+        ordersCol, 
+        where("status", "!=", "Completed"), 
+        where("chefeId", "==", chefeId)
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const allPendingOrders = snapshot.docs.map(doc => ({
@@ -43,7 +51,7 @@ export default function KitchenPage() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [getChefeId]);
 
   const getKitchenItems = (items: OrderItem[]) => {
     return items

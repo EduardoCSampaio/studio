@@ -36,6 +36,7 @@ import { db } from "@/lib/firebase"
 import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { format } from "date-fns"
+import { useAuth } from "@/hooks/use-auth"
 
 
 const initialSalesData = [
@@ -61,6 +62,7 @@ type WaiterRanking = {
 }
 
 export default function DashboardPage() {
+  const { getChefeId } = useAuth();
   const [orders, setOrders] = React.useState<Order[]>([])
   const [customersToday, setCustomersToday] = React.useState<Customer[]>([]);
   const [salesData, setSalesData] = React.useState(initialSalesData);
@@ -70,8 +72,11 @@ export default function DashboardPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
-    // Listen for all orders
-    const ordersUnsubscribe = onSnapshot(collection(db, "orders"), (snapshot) => {
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
+    const ordersQuery = query(collection(db, "orders"), where("chefeId", "==", chefeId));
+    const ordersUnsubscribe = onSnapshot(ordersQuery, (snapshot) => {
         const ordersList = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -81,11 +86,14 @@ export default function DashboardPage() {
         updateWaiterRanking(ordersList);
     });
 
-    // Listen for customers who checked in today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = Timestamp.fromDate(today);
-    const customersQuery = query(collection(db, "customers"), where("checkIn", ">=", todayTimestamp));
+    const customersQuery = query(
+        collection(db, "customers"), 
+        where("chefeId", "==", chefeId),
+        where("checkIn", ">=", todayTimestamp)
+    );
     const customersUnsubscribe = onSnapshot(customersQuery, (snapshot) => {
         const customersList = snapshot.docs.map(doc => doc.data() as Customer);
         setCustomersToday(customersList);
@@ -95,15 +103,14 @@ export default function DashboardPage() {
         ordersUnsubscribe();
         customersUnsubscribe();
     };
-  }, [])
+  }, [getChefeId])
 
   const updateSalesChart = (allOrders: Order[]) => {
       const monthlySales = [...initialSalesData];
       allOrders.forEach(order => {
           if (order.createdAt && order.status === 'Completed') {
-              // Firebase timestamps can be converted to JS Date objects
               const orderDate = (order.createdAt as Timestamp).toDate();
-              const month = orderDate.getMonth(); // 0 = Jan, 1 = Feb, etc.
+              const month = orderDate.getMonth();
               monthlySales[month].total += order.total;
           }
       });
@@ -128,7 +135,7 @@ export default function DashboardPage() {
 
     const rankedWaiters = Object.values(salesByWaiter)
         .sort((a, b) => b.totalSales - a.totalSales)
-        .slice(0, 5); // Pega o top 5
+        .slice(0, 5);
         
     setWaiterRanking(rankedWaiters);
   }

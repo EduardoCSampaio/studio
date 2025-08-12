@@ -20,15 +20,22 @@ import {
 import { type Order, type OrderItem } from "@/lib/data"
 import { collection, onSnapshot, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function BarPage() {
+  const { getChefeId } = useAuth();
   const [orders, setOrders] = React.useState<Order[]>([])
 
   React.useEffect(() => {
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
     const ordersCol = collection(db, 'orders');
-    // Query for orders that are not completed and contain at least one bar item.
-    // Firestore doesn't support array-contains with OR, so we fetch and filter client-side.
-    const q = query(ordersCol, where("status", "!=", "Completed"));
+    const q = query(
+        ordersCol, 
+        where("status", "!=", "Completed"), 
+        where("chefeId", "==", chefeId)
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const allPendingOrders = snapshot.docs.map(doc => ({
@@ -44,7 +51,7 @@ export default function BarPage() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [getChefeId]);
 
   const getBarItems = (items: OrderItem[]) => {
     return items

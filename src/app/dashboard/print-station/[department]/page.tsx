@@ -10,15 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { type Order } from "@/lib/data"
 import { Printer, Wifi, WifiOff, Eye } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 function PrintableReceipt({ order }: { order: Order | null }) {
     if (!order) return null;
 
-    // Filter items to only show those for the current department
     const department = order.items[0]?.department;
 
     return (
@@ -41,8 +41,9 @@ function PrintableReceipt({ order }: { order: Order | null }) {
 
 export default function DepartmentPrintStationPage() {
     const params = useParams();
-    const department = params.department as string; // 'Cozinha' or 'Bar'
-
+    const department = params.department as string; 
+    const { getChefeId } = useAuth();
+    
     const [isConnected, setIsConnected] = React.useState(true);
     const [ordersToPrint, setOrdersToPrint] = React.useState<Order[]>([]);
     const printRef = React.useRef<HTMLDivElement>(null);
@@ -52,7 +53,6 @@ export default function DepartmentPrintStationPage() {
     const wakeLockRef = React.useRef<any>(null);
 
 
-    // Screen Wake Lock logic
     React.useEffect(() => {
         const acquireWakeLock = async () => {
              if (document.visibilityState !== 'visible') return;
@@ -60,12 +60,10 @@ export default function DepartmentPrintStationPage() {
                 if ('wakeLock' in navigator && !wakeLockRef.current) {
                     wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
                     wakeLockRef.current.addEventListener('release', () => {
-                        console.log('Screen Wake Lock was released.');
                         setWakeLockActive(false);
                         wakeLockRef.current = null;
                     });
                     setWakeLockActive(true);
-                    console.log('Screen Wake Lock is active.');
                 }
             } catch (err: any) {
                 console.error(`Wake Lock error: ${err.name}, ${err.message}`);
@@ -74,7 +72,7 @@ export default function DepartmentPrintStationPage() {
             }
         };
 
-        acquireWakeLock(); // Attempt to acquire on initial load if visible
+        acquireWakeLock();
 
         document.addEventListener('visibilitychange', acquireWakeLock);
         document.addEventListener('fullscreenchange', acquireWakeLock);
@@ -89,13 +87,14 @@ export default function DepartmentPrintStationPage() {
     }, []);
 
     React.useEffect(() => {
-        if (!department) return;
+        const chefeId = getChefeId();
+        if (!department || !chefeId) return;
 
         const q = query(
             collection(db, "orders"),
+            where("chefeId", "==", chefeId),
             where("status", "==", "Pending"),
             where("printedAt", "==", null),
-            where("items.0.department", "==", department) // More specific query
         );
 
         const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -105,7 +104,6 @@ export default function DepartmentPrintStationPage() {
             const newOrders: Order[] = [];
              snapshot.docs.forEach(doc => {
                  const order = { id: doc.id, ...doc.data() } as Order;
-                 // Additional client-side check just in case, though query should handle it
                  if (order.items.some(item => item.department === department)) {
                     newOrders.push(order);
                  }
@@ -124,7 +122,7 @@ export default function DepartmentPrintStationPage() {
         });
 
         return () => unsubscribe();
-    }, [department]);
+    }, [department, getChefeId]);
 
     React.useEffect(() => {
         if (ordersToPrint.length > 0 && !currentPrintingOrder) {

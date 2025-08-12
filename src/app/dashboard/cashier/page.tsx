@@ -36,6 +36,7 @@ import { collection, query, where, getDocs, writeBatch, doc, updateDoc, collecti
 import { db } from "@/lib/firebase"
 import { XCircle } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useAuth } from "@/hooks/use-auth"
 
 type ItemWithOrderId = OrderItem & { 
     orderId: string;
@@ -45,6 +46,7 @@ type ItemWithOrderId = OrderItem & {
 
 export default function CashierPage() {
   const { toast } = useToast()
+  const { getChefeId } = useAuth()
   const [comandaId, setComandaId] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const [customer, setCustomer] = React.useState<Customer | null>(null)
@@ -55,7 +57,8 @@ export default function CashierPage() {
   const [paymentMethod, setPaymentMethod] = React.useState<"dinheiro" | "credito" | "debito">("credito");
 
   const handleSearchComanda = async () => {
-    if (!comandaId) {
+    const chefeId = getChefeId();
+    if (!comandaId || !chefeId) {
       toast({
         variant: "destructive",
         title: "Campo Obrigatório",
@@ -69,9 +72,12 @@ export default function CashierPage() {
     setOrders([])
 
     try {
-      // Find customer
       const customersRef = collection(db, "customers")
-      const qCustomer = query(customersRef, where("wristbandId", "==", parseInt(comandaId, 10)))
+      const qCustomer = query(
+        customersRef, 
+        where("wristbandId", "==", parseInt(comandaId, 10)),
+        where("chefeId", "==", chefeId)
+      )
       const customerSnapshot = await getDocs(qCustomer)
 
       let customerData: Customer | null = null;
@@ -80,9 +86,12 @@ export default function CashierPage() {
         setCustomer(customerData)
       }
       
-      // Find all orders for that comanda
       const ordersRef = collection(db, "orders")
-      const qOrders = query(ordersRef, where("comandaId", "==", comandaId))
+      const qOrders = query(
+        ordersRef, 
+        where("comandaId", "==", comandaId),
+        where("chefeId", "==", chefeId)
+      )
       const ordersSnapshot = await getDocs(qOrders)
       
       const allOrdersForComanda = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[]
@@ -135,7 +144,6 @@ export default function CashierPage() {
             title: "Conta Fechada!",
             description: `A conta da comanda #${comandaId} foi fechada com sucesso.`,
         });
-        // Reset state after closing
         setComandaId("");
         setCustomer(null);
         setOrders([]);
@@ -183,7 +191,6 @@ export default function CashierPage() {
         let updatedItems: OrderItem[];
 
         if (quantityToCancel === originalQuantity) {
-            // Cancel the entire item line
             updatedItems = orderToUpdate.items.map((item, index) => {
                 if (index === originalIndex) {
                     return { ...item, status: 'Cancelled' as const };
@@ -191,14 +198,11 @@ export default function CashierPage() {
                 return item;
             });
         } else {
-            // Split the item
-            updatedItems = [...orderToUpdate.items]; // Create a copy
+            updatedItems = [...orderToUpdate.items]; 
             const originalItem = updatedItems[originalIndex];
             
-            // Reduce quantity of the original item
             originalItem.quantity = originalQuantity - quantityToCancel;
 
-            // Add a new item for the cancelled portion
             const cancelledItem: OrderItem = {
                 ...originalItem,
                 quantity: quantityToCancel,
@@ -220,7 +224,6 @@ export default function CashierPage() {
             total: updatedTotal,
         });
 
-        // Update local state to reflect the change immediately
         setOrders(prevOrders => prevOrders.map(order => 
             order.id === orderId 
                 ? { ...order, items: updatedItems, total: updatedTotal } 
@@ -444,5 +447,3 @@ export default function CashierPage() {
     </>
   )
 }
-
-    

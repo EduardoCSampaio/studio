@@ -5,12 +5,14 @@ export type Product = {
   name: string;
   price: number;
   department: 'Cozinha' | 'Bar' | 'Geral';
+  chefeId: string;
 };
 
 export type Table = {
   id: number;
   status: 'Disponível' | 'Ocupada' | 'Reservada';
   orderId?: string;
+  chefeId: string;
 };
 
 export type OrderItem = {
@@ -36,6 +38,7 @@ export type Order = {
   customerName?: string;
   createdAt: any; // Firestore server timestamp
   printedAt?: any | null; // Firestore server timestamp or null
+  chefeId: string;
 };
 
 export type UserRole = 'Admin' | 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Caixa' | 'Cozinha';
@@ -45,6 +48,7 @@ export type User = {
   name: string;
   role: UserRole;
   email: string;
+  chefeId?: string; // ID do Chefe que gerencia este usuário. O próprio Chefe não terá isso.
 };
 
 export type Customer = {
@@ -55,6 +59,7 @@ export type Customer = {
   wristbandId: number;
   checkIn: Date;
   tableId?: number;
+  chefeId: string;
 };
 
 export type Reservation = {
@@ -67,6 +72,7 @@ export type Reservation = {
     status: 'Confirmada' | 'Cancelada' | 'Aguardando';
     notes?: string;
     createdBy: string; // userId
+    chefeId: string;
 }
 
 export type DailyClosing = {
@@ -84,6 +90,6 @@ export type DailyClosing = {
     totalCompletedOrders: number;
     cancelledItems: OrderItem[];
     totalCancelledValue: number;
+    chefeId: string;
 }
     
-

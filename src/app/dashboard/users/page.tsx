@@ -42,10 +42,12 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { useAuth } from "@/hooks/use-auth"
 
 const availableRoles: UserRole[] = ['Portaria', 'Garçom', 'Bar', 'Caixa', 'Cozinha'];
 
 export default function UsersPage() {
+  const { user, getChefeId } = useAuth()
   const [users, setUsers] = React.useState<User[]>([])
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -59,9 +61,11 @@ export default function UsersPage() {
   });
 
   React.useEffect(() => {
-    // Query for users that are not 'Chefe' or 'Admin'
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
     const usersCol = collection(db, 'users');
-    const q = query(usersCol, where("role", "not-in", ["Chefe", "Admin"]));
+    const q = query(usersCol, where("chefeId", "==", chefeId));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const userList = snapshot.docs.map(doc => {
@@ -77,7 +81,7 @@ export default function UsersPage() {
     });
 
     return () => unsubscribe();
-  }, [])
+  }, [getChefeId])
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { id, value } = e.target;
@@ -89,7 +93,8 @@ export default function UsersPage() {
   }
   
   const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.password || !newUser.role) {
+    const chefeId = getChefeId();
+    if (!newUser.name || !newUser.email || !newUser.password || !newUser.role || !chefeId) {
         toast({
             variant: "destructive",
             title: "Campos Obrigatórios",
@@ -100,14 +105,12 @@ export default function UsersPage() {
 
     setIsLoading(true);
     
-    // In a real-world scenario, you would use a Cloud Function to create the user in Firebase Auth.
-    // For this prototype, we'll add the user to the 'users' collection in Firestore.
-    // The administrator would then need to create the corresponding user in Firebase Authentication.
     try {
         await addDoc(collection(db, "users"), {
             name: newUser.name,
             email: newUser.email,
             role: newUser.role,
+            chefeId: chefeId,
         });
 
         toast({
@@ -115,7 +118,6 @@ export default function UsersPage() {
             description: `${newUser.name} foi adicionado. Agora, crie a autenticação para ${newUser.email} no console do Firebase.`,
         });
         
-        // Reset form
         setNewUser({ name: "", email: "", password: "", role: "" });
         setDialogOpen(false);
 
@@ -169,7 +171,7 @@ export default function UsersPage() {
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant={user.role === 'Chefe' ? 'default' : 'secondary'}>{user.role}</Badge>
+                      <Badge variant={'secondary'}>{user.role}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}

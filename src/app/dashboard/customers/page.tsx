@@ -46,14 +46,21 @@ export default function CustomersPage() {
   const [newCustomerBirthDate, setNewCustomerBirthDate] = React.useState("")
   const [newWristbandId, setNewWristbandId] = React.useState("")
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getChefeId } = useAuth()
 
   React.useEffect(() => {
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = Timestamp.fromDate(today);
 
-    const q = query(collection(db, "customers"), where("checkIn", ">=", todayTimestamp));
+    const q = query(
+        collection(db, "customers"), 
+        where("chefeId", "==", chefeId),
+        where("checkIn", ">=", todayTimestamp)
+    );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const customersList = snapshot.docs.map(doc => ({
@@ -66,10 +73,11 @@ export default function CustomersPage() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [getChefeId]);
 
   const handleAddCustomer = async () => {
-    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate) {
+    const chefeId = getChefeId();
+    if (!newCustomerName || !newWristbandId || !newCustomerCpf || !newCustomerBirthDate || !chefeId) {
       toast({
         variant: "destructive",
         title: "Erro ao adicionar cliente",
@@ -97,6 +105,7 @@ export default function CustomersPage() {
           birthDate: birthDateObject,
           wristbandId: parseInt(newWristbandId, 10),
           checkIn: new Date(),
+          chefeId: chefeId,
         }
 
         await addDoc(collection(db, "customers"), newCustomer)

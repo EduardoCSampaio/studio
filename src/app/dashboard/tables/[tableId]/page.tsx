@@ -34,7 +34,7 @@ export default function OrderPage() {
   const searchParams = useSearchParams();
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, getChefeId } = useAuth()
 
   const wristbandId = params.tableId as string;
   const tableIdFromQuery = searchParams.get('tableId');
@@ -47,8 +47,12 @@ export default function OrderPage() {
 
   React.useEffect(() => {
     async function fetchData() {
+      const chefeId = getChefeId();
+      if (!chefeId) return;
+
       const productsCol = collection(db, 'products');
-      const productSnapshot = await getDocs(productsCol);
+      const qProducts = query(productsCol, where("chefeId", "==", chefeId));
+      const productSnapshot = await getDocs(qProducts);
       const productList = productSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -57,7 +61,10 @@ export default function OrderPage() {
 
       if (wristbandId) {
           const customersRef = collection(db, "customers");
-          const q = query(customersRef, where("wristbandId", "==", parseInt(wristbandId, 10)));
+          const q = query(customersRef, 
+            where("wristbandId", "==", parseInt(wristbandId, 10)),
+            where("chefeId", "==", chefeId)
+          );
           const querySnapshot = await getDocsFromQuery(q);
 
           if (!querySnapshot.empty) {
@@ -74,7 +81,7 @@ export default function OrderPage() {
     }
 
     fetchData();
-  }, [wristbandId]);
+  }, [wristbandId, getChefeId]);
 
 
   const handleAddItem = (product: Product) => {
@@ -121,7 +128,8 @@ export default function OrderPage() {
   }
 
   const handleSendOrder = async () => {
-    if (!user) {
+    const chefeId = getChefeId();
+    if (!user || !chefeId) {
       toast({
         variant: "destructive",
         title: "Erro de Autenticação",
@@ -157,6 +165,7 @@ export default function OrderPage() {
           createdAt: timestamp,
           printedAt: null,
           tableId: tableIdFromQuery ? parseInt(tableIdFromQuery, 10) : customer?.tableId || null,
+          chefeId: chefeId,
       };
 
       if (kitchenItems.length > 0) {
@@ -191,7 +200,6 @@ export default function OrderPage() {
         description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
       })
       
-      // Navigate away after sending
       if (user?.role === 'Garçom') {
           router.push("/dashboard/waiter");
       } else {

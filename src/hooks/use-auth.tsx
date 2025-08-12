@@ -12,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
+  getChefeId: () => string | null;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -24,7 +25,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser && firebaseUser.email) {
-        // Fetch user profile from Firestore to get the correct role
         const usersRef = collection(db, "users");
         const q = query(usersRef, where("email", "==", firebaseUser.email));
         const querySnapshot = await getDocs(q);
@@ -37,10 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 name: userData.name || firebaseUser.displayName || 'Usuário',
                 email: firebaseUser.email,
                 role: userData.role as UserRole,
+                chefeId: userData.chefeId
             });
         } else {
-            // Handle case where user exists in Auth but not in 'users' collection
-            // For now, treat as no-access, or assign a default guest role
             console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore.`);
             setUser(null);
         }
@@ -59,11 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await auth.signOut();
     setUser(null);
     router.push('/login');
-    // No need to set loading to false, as the redirect will unmount this
   };
 
+  const getChefeId = (): string | null => {
+    if (!user) return null;
+    return user.role === 'Chefe' ? user.id : user.chefeId || null;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, getChefeId }}>
       {children}
     </AuthContext.Provider>
   );

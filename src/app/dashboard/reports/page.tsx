@@ -39,7 +39,7 @@ import { db } from "@/lib/firebase"
 import { BookCheck, FileText, Users, DollarSign, XCircle, AlertTriangle, RotateCcw, CreditCard, Banknote } from "lucide-react"
 
 export default function ReportsPage() {
-  const { user } = useAuth()
+  const { user, getChefeId } = useAuth()
   const { toast } = useToast()
   const [closings, setClosings] = React.useState<DailyClosing[]>([])
   const [isClosing, setIsClosing] = React.useState(false)
@@ -49,7 +49,14 @@ export default function ReportsPage() {
   const [lastClosing, setLastClosing] = React.useState<DailyClosing | null>(null)
 
   React.useEffect(() => {
-    const closingsQuery = query(collection(db, "dailyClosings"), orderBy("date", "desc"));
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
+    const closingsQuery = query(
+        collection(db, "dailyClosings"), 
+        where("chefeId", "==", chefeId),
+        orderBy("date", "desc")
+    );
     const unsubscribe = onSnapshot(closingsQuery, (snapshot) => {
         const closingsList = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -80,10 +87,11 @@ export default function ReportsPage() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [getChefeId]);
 
   const handleClosingProcess = async () => {
-    if (!user) {
+    const chefeId = getChefeId();
+    if (!user || !chefeId) {
         toast({ variant: "destructive", title: "Usuário não autenticado." });
         return;
     }
@@ -91,7 +99,6 @@ export default function ReportsPage() {
     setIsClosing(true);
 
     try {
-        // --- 1. Fetch data for today ---
         const today = new Date();
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
         const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
@@ -99,8 +106,8 @@ export default function ReportsPage() {
         const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
         const endOfDayTimestamp = Timestamp.fromDate(endOfDay);
 
-        // Fetch all orders to find cancelled items and completed ones
         const allOrdersQuery = query(collection(db, "orders"), 
+             where("chefeId", "==", chefeId),
              where("createdAt", ">=", startOfDayTimestamp),
              where("createdAt", "<=", endOfDayTimestamp)
         );
@@ -109,17 +116,16 @@ export default function ReportsPage() {
         
         const completedOrders = allOrders.filter(order => order.status === "Completed");
 
-        // Fetch customers
         const customersQuery = query(collection(db, "customers"), 
+            where("chefeId", "==", chefeId),
             where("checkIn", ">=", startOfDayTimestamp),
             where("checkIn", "<=", endOfDayTimestamp)
         );
         const customersSnapshot = await getDocs(customersQuery);
         const totalCustomers = customersSnapshot.size;
 
-        // --- 2. Calculate metrics ---
         const totalRevenue = completedOrders.reduce((acc, order) => acc + order.total, 0);
-        const serviceFeePercentage = 0.10; // 10%
+        const serviceFeePercentage = 0.10;
         const subtotalOfCompleted = completedOrders.reduce((acc, order) => acc + (order.total / (1 + serviceFeePercentage)), 0);
         const totalServiceFee = totalRevenue - subtotalOfCompleted;
 
@@ -130,7 +136,6 @@ export default function ReportsPage() {
         const cancelledItems = allOrders.flatMap(order => order.items.filter(item => item.status === "Cancelled")) as OrderItem[];
         const totalCancelledValue = cancelledItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-        // --- 3. Create closing document ---
         const closingDoc: Omit<DailyClosing, 'id' | 'closedAt'> = {
             date: startOfDayTimestamp,
             closedByUserId: user.id,
@@ -144,6 +149,7 @@ export default function ReportsPage() {
             totalCompletedOrders: completedOrders.length,
             cancelledItems: cancelledItems,
             totalCancelledValue: totalCancelledValue,
+            chefeId: chefeId,
         };
 
         await addDoc(collection(db, "dailyClosings"), {
@@ -414,7 +420,3 @@ export default function ReportsPage() {
     </>
   )
 }
-
-    
-
-    

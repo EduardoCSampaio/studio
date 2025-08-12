@@ -40,9 +40,11 @@ import { PlusCircle } from "lucide-react"
 import { type Product } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, onSnapshot, addDoc } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function ProductsPage() {
+  const { getChefeId } = useAuth();
   const [products, setProducts] = React.useState<Product[]>([]);
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [newProductName, setNewProductName] = React.useState("");
@@ -51,8 +53,12 @@ export default function ProductsPage() {
   const { toast } = useToast();
 
   React.useEffect(() => {
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
     const productsCol = collection(db, 'products');
-    const unsubscribe = onSnapshot(productsCol, (snapshot) => {
+    const q = query(productsCol, where("chefeId", "==", chefeId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         const productList = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -66,10 +72,11 @@ export default function ProductsPage() {
     });
 
     return () => unsubscribe();
-  }, [])
+  }, [getChefeId])
 
   const handleAddProduct = async () => {
-    if (!newProductName || !newProductPrice || !newProductDepartment) {
+    const chefeId = getChefeId();
+    if (!newProductName || !newProductPrice || !newProductDepartment || !chefeId) {
         toast({
             variant: "destructive",
             title: "Erro ao adicionar produto",
@@ -83,6 +90,7 @@ export default function ProductsPage() {
             name: newProductName,
             price: parseFloat(newProductPrice),
             department: newProductDepartment,
+            chefeId: chefeId,
         });
 
         toast({

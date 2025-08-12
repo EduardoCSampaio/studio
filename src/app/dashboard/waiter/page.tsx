@@ -18,17 +18,26 @@ import { collection, query, where, getDocs, onSnapshot, orderBy } from "firebase
 import { db } from "@/lib/firebase"
 import { type Table } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function WaiterPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { getChefeId } = useAuth()
   const [comandaId, setComandaId] = React.useState("")
   const [tableId, setTableId] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [tables, setTables] = React.useState<Table[]>([]);
 
   React.useEffect(() => {
-    const tablesCol = query(collection(db, 'tables'), orderBy('id'));
+    const chefeId = getChefeId();
+    if (!chefeId) return;
+
+    const tablesCol = query(
+        collection(db, 'tables'), 
+        where("chefeId", "==", chefeId),
+        orderBy('id')
+    );
     const unsubscribe = onSnapshot(tablesCol, (snapshot) => {
         const tableList = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -42,9 +51,10 @@ export default function WaiterPage() {
     });
 
     return () => unsubscribe();
-  }, [])
+  }, [getChefeId])
 
   const handleStartOrder = async () => {
+    const chefeId = getChefeId();
     if (!comandaId) {
       toast({
         variant: "destructive",
@@ -65,7 +75,11 @@ export default function WaiterPage() {
     setIsSubmitting(true);
     
     const customersRef = collection(db, "customers");
-    const q = query(customersRef, where("wristbandId", "==", parseInt(comandaId, 10)));
+    const q = query(
+        customersRef, 
+        where("wristbandId", "==", parseInt(comandaId, 10)),
+        where("chefeId", "==", chefeId)
+    );
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
