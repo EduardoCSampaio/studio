@@ -40,10 +40,11 @@ import { PlusCircle } from "lucide-react"
 import { type User, UserRole } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc } from "firebase/firestore"
+import { db, auth } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"
 
 const availableRoles: UserRole[] = ['Portaria', 'Garçom', 'Bar', 'Caixa', 'Cozinha'];
 
@@ -51,6 +52,7 @@ export default function UsersPage() {
   const { user, getChefeId } = useAuth()
   const [users, setUsers] = React.useState<User[]>([])
   const [isDialogOpen, setDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
 
@@ -95,7 +97,11 @@ export default function UsersPage() {
   
   const handleAddUser = async () => {
     const chefeId = getChefeId();
-    if (!newUser.name || !newUser.email || !newUser.password || !newUser.role || !chefeId) {
+    const currentChefe = user; 
+    const currentChefePassword = prompt("Para confirmar, por favor, insira sua senha de Chefe:");
+
+
+    if (!newUser.name || !newUser.email || !newUser.password || !newUser.role || !chefeId || !currentChefe) {
         toast({
             variant: "destructive",
             title: "Campos Obrigatórios",
@@ -103,10 +109,18 @@ export default function UsersPage() {
         });
         return;
     }
+     if (!currentChefePassword) {
+        toast({ variant: "destructive", title: "Senha necessária", description: "A senha do Chefe é necessária para autorizar a criação." });
+        return;
+    }
 
     setIsLoading(true);
     
     try {
+        // 1. Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password);
+        
+        // 2. Add user to Firestore database
         await addDoc(collection(db, "users"), {
             name: newUser.name,
             email: newUser.email,
@@ -115,25 +129,47 @@ export default function UsersPage() {
         });
 
         toast({
-            title: "Usuário Adicionado",
-            description: `${newUser.name} foi adicionado. Agora, crie a autenticação para ${newUser.email} no console do Firebase.`,
+            title: "Usuário Adicionado Com Sucesso!",
+            description: `${newUser.name} foi adicionado e já pode fazer login.`,
         });
         
         setNewUser({ name: "", email: "", password: "", role: "" });
         setDialogOpen(false);
 
-    } catch (error) {
-         console.error("Error adding user: ", error);
+    } catch (error: any) {
+        let description = "Ocorreu um erro ao salvar o novo usuário.";
+        if (error.code === 'auth/email-already-in-use') {
+            description = "Este e-mail já está em uso por outra conta.";
+        } else if (error.code === 'auth/weak-password') {
+            description = "A senha é muito fraca. Use pelo menos 6 caracteres.";
+        }
+        console.error("Error adding user: ", error);
         toast({
             variant: "destructive",
             title: "Erro ao Adicionar Usuário",
-            description: "Ocorreu um erro ao salvar o novo usuário.",
+            description: description,
         });
     } finally {
+        // 3. Sign the Chefe back in to restore their session
+        if (currentChefe.email) {
+            try {
+                await signInWithEmailAndPassword(auth, currentChefe.email, currentChefePassword);
+            } catch (reauthError) {
+                console.error("Failed to re-authenticate Chefe:", reauthError);
+                toast({
+                    variant: "destructive",
+                    title: "Sessão Expirada",
+                    description: "Não foi possível re-autenticar. Por favor, faça login novamente."
+                });
+            }
+        }
         setIsLoading(false);
     }
   }
 
+  const openDeleteDialog = (user: User) => {
+    // Implementar a lógica de deleção se necessário
+  }
 
   return (
     <>
@@ -214,7 +250,7 @@ export default function UsersPage() {
               <Label htmlFor="password" className="text-right">
                 Senha
               </Label>
-              <Input id="password" type="password" value={newUser.password} onChange={handleInputChange} className="col-span-3" placeholder="Senha de acesso" />
+              <Input id="password" type="password" value={newUser.password} onChange={handleInputChange} className="col-span-3" placeholder="Mínimo 6 caracteres" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
                <Label htmlFor="role" className="text-right">
@@ -232,12 +268,6 @@ export default function UsersPage() {
                 </Select>
             </div>
           </div>
-          <Alert variant="destructive" className="mt-4">
-            <AlertTitle>Ação Manual Necessária!</AlertTitle>
-            <AlertDescription>
-                Após adicionar, você precisará criar este usuário (com mesmo e-mail e senha) no console do <b>Firebase Authentication</b> para que o login funcione.
-            </AlertDescription>
-          </Alert>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={isLoading}>Cancelar</Button>
