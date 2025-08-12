@@ -29,16 +29,19 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, Trash2 } from "lucide-react"
 import { type User, UserRole } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
 export default function AdminPage() {
   const [chefs, setChefs] = React.useState<User[]>([])
-  const [isDialogOpen, setDialogOpen] = React.useState(false);
+  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
 
@@ -92,13 +95,13 @@ export default function AdminPage() {
         });
 
         toast({
-            title: "Usuário Chefe Adicionado",
-            description: `${newChefe.name} foi adicionado. Agora, crie a autenticação para ${newChefe.email} no console do Firebase.`,
+            title: "Usuário Chefe Registrado",
+            description: `${newChefe.name} foi adicionado. Agora, crie a conta de autenticação para este e-mail no console do Firebase.`,
         });
         
         // Reset form
         setNewChefe({ name: "", email: "", password: "" });
-        setDialogOpen(false);
+        setAddDialogOpen(false);
 
     } catch (error) {
          console.error("Error adding Chefe: ", error);
@@ -112,6 +115,35 @@ export default function AdminPage() {
     }
   }
 
+  const openDeleteDialog = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  }
+
+  const handleDeleteChefe = async () => {
+    if (!userToDelete) return;
+    setIsLoading(true);
+
+    try {
+        await deleteDoc(doc(db, "users", userToDelete.id));
+        toast({
+            title: "Usuário Removido",
+            description: `O usuário ${userToDelete.name} foi removido do banco de dados. Lembre-se de removê-lo também do Firebase Authentication.`
+        });
+        setUserToDelete(null);
+        setDeleteDialogOpen(false);
+    } catch (error) {
+        console.error("Error deleting Chefe: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Remover Usuário",
+            description: "Não foi possível remover o usuário do banco de dados."
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  }
+
   return (
     <>
       <div className="space-y-6">
@@ -119,10 +151,10 @@ export default function AdminPage() {
           <div>
             <h1 className="text-4xl font-headline font-bold text-foreground">Admin</h1>
             <p className="text-muted-foreground">
-              Gerencie as contas Chefe (clientes) do sistema.
+              Gerencie as contas Chefe (seus clientes) do sistema.
             </p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Chefe
           </Button>
@@ -131,7 +163,7 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle>Lista de Chefes</CardTitle>
             <CardDescription>
-              Uma lista de todos os usuários com permissão de Chefe.
+              Uma lista de todos os usuários com permissão de Chefe (clientes do sistema).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -141,6 +173,7 @@ export default function AdminPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email (Login)</TableHead>
                   <TableHead>Cargo</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,11 +184,17 @@ export default function AdminPage() {
                     <TableCell>
                       <Badge variant={'default'}>{user.role}</Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(user)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <span className="sr-only">Remover Chefe</span>
+                        </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {chefs.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       Nenhum Chefe encontrado. Clique em "Adicionar Chefe" para começar.
                     </TableCell>
                   </TableRow>
@@ -166,12 +205,12 @@ export default function AdminPage() {
         </Card>
       </div>
 
-       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+       <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Chefe</DialogTitle>
             <DialogDescription>
-              Preencha os dados do novo gestor. Ele usará o e-mail e senha para fazer login e gerenciar seu próprio restaurante.
+                Preencha os dados do novo gestor. Isso o registrará no sistema.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -194,7 +233,13 @@ export default function AdminPage() {
               <Input id="password" type="password" value={newChefe.password} onChange={handleInputChange} className="col-span-3" placeholder="Senha de acesso" />
             </div>
           </div>
-          <DialogFooter>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>Ação Manual Necessária!</AlertTitle>
+            <AlertDescription>
+                Após adicionar, você precisará criar este usuário (com mesmo e-mail e senha) no console do <b>Firebase Authentication</b> para que o login funcione.
+            </AlertDescription>
+          </Alert>
+          <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={isLoading}>Cancelar</Button>
             </DialogClose>
@@ -202,6 +247,33 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Confirmar Remoção</DialogTitle>
+                <DialogDescription>
+                    Tem certeza que deseja remover o usuário <b>{userToDelete?.name}</b>? Esta ação removerá o registro do banco de dados.
+                </DialogDescription>
+            </DialogHeader>
+             <Alert variant="destructive" className="mt-4">
+                <AlertTitle>Ação Manual Necessária!</AlertTitle>
+                <AlertDescription>
+                    Para remover completamente o acesso, você também deve excluir este usuário do console do <b>Firebase Authentication</b>.
+                </AlertDescription>
+            </Alert>
+            <DialogFooter className="mt-4">
+                 <DialogClose asChild>
+                    <Button variant="outline" disabled={isLoading}>Cancelar</Button>
+                </DialogClose>
+                <Button onClick={handleDeleteChefe} variant="destructive" disabled={isLoading}>
+                    {isLoading ? "Removendo..." : "Sim, Remover"}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
+
+    
