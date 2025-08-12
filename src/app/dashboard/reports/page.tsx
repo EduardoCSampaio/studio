@@ -54,8 +54,7 @@ export default function ReportsPage() {
 
     const closingsQuery = query(
         collection(db, "dailyClosings"), 
-        where("chefeId", "==", chefeId),
-        orderBy("date", "desc")
+        where("chefeId", "==", chefeId)
     );
     const unsubscribe = onSnapshot(closingsQuery, (snapshot) => {
         const closingsList = snapshot.docs.map(doc => {
@@ -67,10 +66,12 @@ export default function ReportsPage() {
                 closedAt: data.closedAt ? (data.closedAt as Timestamp).toDate() : new Date(),
             } as DailyClosing;
         });
-        setClosings(closingsList);
+        
+        const sortedClosings = closingsList.sort((a, b) => b.date.getTime() - a.date.getTime());
+        setClosings(sortedClosings);
 
-        if (closingsList.length > 0) {
-            const last = closingsList[0];
+        if (sortedClosings.length > 0) {
+            const last = sortedClosings[0];
             const today = new Date();
             const lastClosingDate = last.date;
             
