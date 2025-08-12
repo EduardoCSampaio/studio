@@ -87,10 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  const getChefeId = (): string | null => {
+  const getChefeId = React.useCallback((): string | null => {
     if (!user) return null;
     return user.role === 'Chefe' ? user.id : user.chefeId || null;
-  }
+  }, [user])
 
   return (
     <AuthContext.Provider value={{ user, loading, logout, getChefeId }}>

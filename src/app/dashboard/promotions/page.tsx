@@ -41,7 +41,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function PromotionsPage() {
-  const { getChefeId } = useAuth();
+  const { user, getChefeId } = useAuth();
   const [promotions, setPromotions] = React.useState<Promotion[]>([]);
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
   const [isDialogOpen, setDialogOpen] = React.useState(false);
@@ -55,7 +55,7 @@ export default function PromotionsPage() {
 
   React.useEffect(() => {
     const chefeId = getChefeId();
-    if (!chefeId) return;
+    if (!user || !chefeId) return;
 
     const productsQuery = query(collection(db, 'products'), where("chefeId", "==", chefeId));
     const promotionsQuery = query(collection(db, 'promotions'), where("chefeId", "==", chefeId));
@@ -74,7 +74,7 @@ export default function PromotionsPage() {
         unsubProducts();
         unsubPromotions();
     };
-  }, [getChefeId])
+  }, [user, getChefeId])
 
   const originalPrice = React.useMemo(() => {
     return selectedProducts.reduce((total, product) => total + product.price, 0);
