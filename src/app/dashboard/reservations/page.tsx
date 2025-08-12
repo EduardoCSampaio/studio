@@ -69,27 +69,27 @@ export default function ReservationsPage() {
     const chefeId = getChefeId();
     if (!chefeId) return;
 
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
-
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    const endOfDayTimestamp = Timestamp.fromDate(endOfDay);
-
-    const q = query(collection(db, "reservations"), 
-        where("chefeId", "==", chefeId),
-        where("reservationTime", ">=", startOfDayTimestamp),
-        where("reservationTime", "<=", endOfDayTimestamp)
-    );
+    const q = query(collection(db, "reservations"), where("chefeId", "==", chefeId));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const reservationList = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          reservationTime: (doc.data().reservationTime as Timestamp).toDate(),
-      })) as Reservation[];
-      setReservations(reservationList.sort((a,b) => a.reservationTime.getTime() - b.reservationTime.getTime()));
+        const allReservations = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            reservationTime: (doc.data().reservationTime as Timestamp).toDate(),
+        })) as Reservation[];
+
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const dailyReservations = allReservations.filter(res => {
+            const resTime = res.reservationTime.getTime();
+            return resTime >= startOfDay.getTime() && resTime <= endOfDay.getTime();
+        });
+
+        setReservations(dailyReservations.sort((a,b) => a.reservationTime.getTime() - b.reservationTime.getTime()));
     });
 
     return () => unsubscribe();
