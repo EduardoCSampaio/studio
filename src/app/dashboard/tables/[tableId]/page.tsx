@@ -20,12 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, Trash2, Send } from "lucide-react"
-import { type OrderItem, type Product, type Customer } from "@/lib/data"
+import { ShoppingCart, Trash2, Send, Star } from "lucide-react"
+import { type OrderItem, type Product, type Customer, type Promotion } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
-import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery } from "firebase/firestore"
+import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 
@@ -41,55 +41,70 @@ export default function OrderPage() {
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>([])
   const [allProducts, setAllProducts] = React.useState<Product[]>([]);
+  const [allPromotions, setAllPromotions] = React.useState<Promotion[]>([]);
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [pageTitle, setPageTitle] = React.useState<string>(`Comanda...`);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    async function fetchData() {
-      const chefeId = getChefeId();
-      if (!chefeId) return;
+    const chefeId = getChefeId();
+    if (!chefeId) return;
 
-      const productsCol = collection(db, 'products');
-      const qProducts = query(productsCol, where("chefeId", "==", chefeId));
-      const productSnapshot = await getDocs(qProducts);
-      const productList = productSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Product[];
-      setAllProducts(productList);
+    // Fetch Products
+    const productsCol = collection(db, 'products');
+    const qProducts = query(productsCol, where("chefeId", "==", chefeId));
+    const unsubProducts = onSnapshot(qProducts, (snapshot) => {
+        const productList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+        setAllProducts(productList);
+    });
 
-      if (wristbandId) {
-          const customersRef = collection(db, "customers");
-          const q = query(customersRef, 
-            where("wristbandId", "==", parseInt(wristbandId, 10)),
-            where("chefeId", "==", chefeId)
-          );
-          const querySnapshot = await getDocsFromQuery(q);
+    // Fetch Promotions
+    const promotionsCol = collection(db, 'promotions');
+    const qPromotions = query(promotionsCol, where("chefeId", "==", chefeId), where("isActive", "==", true));
+    const unsubPromotions = onSnapshot(qPromotions, (snapshot) => {
+        const promotionList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Promotion[];
+        setAllPromotions(promotionList);
+    });
 
-          if (!querySnapshot.empty) {
-            const customerDoc = querySnapshot.docs[0];
-            const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
-            setCustomer(customerData);
-            setPageTitle(`Comanda #${wristbandId} - ${customerData.name}`);
-          } else {
-            setPageTitle(`Detalhes da Comanda #${wristbandId}`);
-          }
-      }
-      
-      setOrderItems([]);
-    }
+    // Fetch Customer
+    const fetchCustomer = async () => {
+        if (wristbandId) {
+            const customersRef = collection(db, "customers");
+            const q = query(customersRef, 
+                where("wristbandId", "==", parseInt(wristbandId, 10)),
+                where("chefeId", "==", chefeId)
+            );
+            const querySnapshot = await getDocsFromQuery(q);
 
-    fetchData();
-  }, [wristbandId, getChefeId]);
+            if (!querySnapshot.empty) {
+                const customerDoc = querySnapshot.docs[0];
+                const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
+                setCustomer(customerData);
+                const tableInfo = tableIdFromQuery ? ` | Mesa ${tableIdFromQuery}` : (customerData.tableId ? ` | Mesa ${customerData.tableId}` : '');
+                setPageTitle(`Comanda #${wristbandId} - ${customerData.name}${tableInfo}`);
+            } else {
+                setPageTitle(`Detalhes da Comanda #${wristbandId}`);
+            }
+        }
+    };
+    fetchCustomer();
+    
+    setOrderItems([]);
+
+    return () => {
+        unsubProducts();
+        unsubPromotions();
+    };
+
+  }, [wristbandId, tableIdFromQuery, getChefeId]);
 
 
   const handleAddItem = (product: Product) => {
     setOrderItems(prevItems => {
-      const existingItem = prevItems.find(item => item.productId === product.id)
+      const existingItem = prevItems.find(item => item.productId === product.id && !item.promotionId)
       if (existingItem) {
         return prevItems.map(item =>
-          item.productId === product.id
+          item.productId === product.id && !item.promotionId
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
@@ -107,18 +122,42 @@ export default function OrderPage() {
       description: `${product.name} foi adicionado ao pedido.`,
     })
   }
+
+  const handleAddPromotion = (promotion: Promotion) => {
+    const discountMultiplier = 1 - (promotion.discountPercentage / 100);
+
+    const itemsFromPromo: OrderItem[] = promotion.products.map(product => ({
+        productId: product.id,
+        name: product.name,
+        price: product.price * discountMultiplier,
+        quantity: 1,
+        department: product.department,
+        promotionId: promotion.id,
+    }));
+    
+    setOrderItems(prevItems => [...prevItems, ...itemsFromPromo]);
+    
+    toast({
+        title: "Promoção Adicionada!",
+        description: `"${promotion.name}" foi adicionada ao pedido.`,
+    });
+  };
   
-  const handleRemoveItem = (productId: string) => {
+  const handleRemoveItem = (productId: string, promotionId?: string) => {
     setOrderItems(prevItems => {
-        const existingItem = prevItems.find(item => item.productId === productId);
-        if (existingItem && existingItem.quantity > 1) {
-            return prevItems.map(item => 
-                item.productId === productId 
-                    ? { ...item, quantity: item.quantity - 1 } 
-                    : item
-            );
+        const itemIndex = prevItems.findIndex(item => item.productId === productId && item.promotionId === promotionId);
+
+        if (itemIndex === -1) return prevItems;
+
+        const item = prevItems[itemIndex];
+        
+        if (item.quantity > 1) {
+            const newItems = [...prevItems];
+            newItems[itemIndex] = { ...item, quantity: item.quantity - 1 };
+            return newItems;
         }
-        return prevItems.filter(item => item.productId !== productId);
+
+        return prevItems.filter((_, index) => index !== itemIndex);
     });
   };
 
@@ -150,54 +189,30 @@ export default function OrderPage() {
     setIsSubmitting(true);
 
     try {
-      const kitchenItems = orderItems.filter(item => item.department === 'Cozinha');
-      const barItems = orderItems.filter(item => item.department === 'Bar');
-      const generalItems = orderItems.filter(item => item.department === 'Geral');
-      const timestamp = serverTimestamp();
+      const subtotal = calculateTotal(orderItems);
+      const serviceFee = subtotal * 0.1;
+      const total = subtotal + serviceFee;
 
-      const baseOrderData = {
+      const newOrder = {
           comandaId: wristbandId,
           customerId: customer?.id,
           customerName: customer?.name,
           waiterId: user.id,
           waiterName: user.name,
           status: 'Pending' as const,
-          createdAt: timestamp,
+          createdAt: serverTimestamp(),
           printedAt: null,
           tableId: tableIdFromQuery ? parseInt(tableIdFromQuery, 10) : customer?.tableId || null,
           chefeId: chefeId,
+          items: orderItems,
+          total: total
       };
 
-      if (kitchenItems.length > 0) {
-          const kitchenOrder = {
-              ...baseOrderData,
-              items: kitchenItems,
-              total: calculateTotal(kitchenItems),
-          };
-          await addDoc(collection(db, "orders"), kitchenOrder);
-      }
-      
-      if (barItems.length > 0) {
-           const barOrder = {
-              ...baseOrderData,
-              items: barItems,
-              total: calculateTotal(barItems),
-          };
-          await addDoc(collection(db, "orders"), barOrder);
-      }
-
-      if (generalItems.length > 0) {
-           const generalOrder = {
-              ...baseOrderData,
-              items: generalItems,
-              total: calculateTotal(generalItems),
-          };
-          await addDoc(collection(db, "orders"), generalOrder);
-      }
+      await addDoc(collection(db, "orders"), newOrder);
 
       toast({
-        title: "Pedido(s) Enviado(s)!",
-        description: `O pedido para a comanda ${wristbandId} foi enviado para os respectivos departamentos.`,
+        title: "Pedido Enviado com Sucesso!",
+        description: `O pedido para a comanda ${wristbandId} foi enviado para os departamentos.`,
       })
       
       if (user?.role === 'Garçom') {
@@ -230,10 +245,28 @@ export default function OrderPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Menu de Produtos</CardTitle>
-            <CardDescription>Adicione itens ao pedido da comanda.</CardDescription>
+            <CardTitle>Menu de Produtos e Promoções</CardTitle>
+            <CardDescription>Adicione itens ou combos ao pedido da comanda.</CardDescription>
           </CardHeader>
           <CardContent>
+              {allPromotions.length > 0 && (
+                  <>
+                    <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Star className="text-amber-500"/>Promoções</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                        {allPromotions.map((promo) => (
+                        <Button key={promo.id} variant="outline" className="h-auto flex flex-col items-start p-3 border-amber-500/50 hover:bg-amber-500/10" onClick={() => handleAddPromotion(promo)}>
+                            <div className="w-full flex justify-between items-center">
+                                <span className="font-semibold text-primary">{promo.name}</span>
+                                <span className="text-sm font-bold text-primary">R$ {promo.finalPrice.toFixed(2)}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{promo.products.map(p => p.name).join(' + ')}</span>
+                        </Button>
+                        ))}
+                    </div>
+                    <Separator className="my-6"/>
+                  </>
+              )}
+
               <h3 className="text-lg font-semibold mb-2">Cozinha</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {kitchenProducts.map((product) => (
@@ -293,13 +326,16 @@ export default function OrderPage() {
               </TableHeader>
               <TableBody>
                 {orderItems.length > 0 ? (
-                  orderItems.map((item) => (
-                    <TableRow key={item.productId}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
+                  orderItems.map((item, index) => (
+                    <TableRow key={`${item.productId}-${index}`}>
+                      <TableCell className="font-medium">
+                        {item.name}
+                        {item.promotionId && <Badge variant="secondary" className="ml-2">Promo</Badge>}
+                      </TableCell>
                       <TableCell>{item.quantity}</TableCell>
                       <TableCell className="text-right">R$ {(item.price * item.quantity).toFixed(2)}</TableCell>
                        <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.productId)} disabled={isSubmitting}>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.productId, item.promotionId)} disabled={isSubmitting}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -317,9 +353,17 @@ export default function OrderPage() {
             <>
               <Separator />
               <CardFooter className="flex flex-col gap-4 !p-6">
+                <div className="w-full flex justify-between text-muted-foreground text-sm">
+                    <span>Subtotal</span>
+                    <span>R$ {calculateTotal(orderItems).toFixed(2)}</span>
+                </div>
+                <div className="w-full flex justify-between text-muted-foreground text-sm">
+                    <span>Taxa de Serviço (10%)</span>
+                    <span>R$ {(calculateTotal(orderItems) * 0.1).toFixed(2)}</span>
+                </div>
                 <div className="w-full flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>R$ {calculateTotal(orderItems).toFixed(2)}</span>
+                  <span>R$ {(calculateTotal(orderItems) * 1.1).toFixed(2)}</span>
                 </div>
                 <div className="w-full flex gap-2">
                     <Button className="w-full" size="lg" onClick={handleSendOrder} disabled={isSubmitting}>
@@ -336,3 +380,5 @@ export default function OrderPage() {
     </>
   )
 }
+
+    

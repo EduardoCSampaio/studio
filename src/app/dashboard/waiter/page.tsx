@@ -19,13 +19,14 @@ import { db } from "@/lib/firebase"
 import { type Table } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function WaiterPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { getChefeId } = useAuth()
   const [comandaId, setComandaId] = React.useState("")
-  const [tableId, setTableId] = React.useState("")
+  const [selectedTableId, setSelectedTableId] = React.useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [tables, setTables] = React.useState<Table[]>([]);
 
@@ -63,11 +64,11 @@ export default function WaiterPage() {
       })
       return
     }
-     if (!tableId) {
+     if (!selectedTableId) {
         toast({
           variant: "destructive",
           title: "Campo Obrigatório",
-          description: "Por favor, insira o número da mesa.",
+          description: "Por favor, selecione uma mesa.",
         })
         return
       }
@@ -92,7 +93,7 @@ export default function WaiterPage() {
         return;
     }
 
-    router.push(`/dashboard/tables/${comandaId}?tableId=${tableId}`)
+    router.push(`/dashboard/tables/${comandaId}?tableId=${selectedTableId}`)
   }
 
   const getStatusVariant = (status: 'Disponível' | 'Ocupada' | 'Reservada'): 'default' | 'secondary' | 'destructive' | 'outline' => {
@@ -110,12 +111,12 @@ export default function WaiterPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 h-full">
-      <div className="w-full lg:w-1/3">
+      <div className="w-full lg:w-2/5 xl:w-1/3">
          <Card className="w-full max-w-md">
             <CardHeader>
             <CardTitle className="text-2xl font-bold font-headline">Iniciar Novo Pedido</CardTitle>
             <CardDescription>
-                Insira o número da comanda/pulseira do cliente e a mesa.
+                Insira a comanda e selecione uma mesa disponível para começar.
             </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -131,19 +132,31 @@ export default function WaiterPage() {
                 disabled={isSubmitting}
                 />
             </div>
+            
             <div className="space-y-2">
-                <Label htmlFor="tableId" className="text-base">Mesa</Label>
-                <Input
-                id="tableId"
-                type="number"
-                value={tableId}
-                onChange={(e) => setTableId(e.target.value)}
-                placeholder="Ex: 15"
-                className="h-12 text-lg"
-                disabled={isSubmitting}
-                />
+                <Label className="text-base">Selecione a Mesa</Label>
+                <ScrollArea className="h-64 rounded-md border">
+                    <div className="p-4 grid grid-cols-3 gap-3">
+                         {tables.map((table) => (
+                             <Button
+                                key={table.id}
+                                variant={selectedTableId === String(table.id) ? "default" : "outline"}
+                                className="h-16 flex flex-col"
+                                onClick={() => setSelectedTableId(String(table.id))}
+                                disabled={table.status !== 'Disponível'}
+                            >
+                                <span className="text-xl font-bold">{table.id}</span>
+                                <span className="text-xs">{table.status}</span>
+                            </Button>
+                        ))}
+                         {tables.length === 0 && (
+                            <p className="col-span-full text-center text-muted-foreground p-4">Nenhuma mesa encontrada.</p>
+                        )}
+                    </div>
+                </ScrollArea>
             </div>
-            <Button onClick={handleStartOrder} className="w-full h-12 text-lg" disabled={isSubmitting}>
+            
+            <Button onClick={handleStartOrder} className="w-full h-12 text-lg" disabled={isSubmitting || !selectedTableId}>
                 {isSubmitting ? 'Verificando...' : 'Lançar Itens'}
             </Button>
             </CardContent>
@@ -152,12 +165,12 @@ export default function WaiterPage() {
       <div className="flex-1">
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-headline font-bold text-foreground">Status das Mesas</h1>
+                <h1 className="text-3xl font-headline font-bold text-foreground">Mapa de Mesas</h1>
                 <p className="text-muted-foreground">
                     Visualize a ocupação do salão em tempo real.
                 </p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {tables.map((table) => (
                     <Card key={table.id} className="cursor-default">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -186,3 +199,5 @@ export default function WaiterPage() {
     </div>
   )
 }
+
+    
