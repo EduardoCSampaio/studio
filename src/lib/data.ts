@@ -49,6 +49,7 @@ export type User = {
   name: string;
   role: UserRole;
   email: string;
+  photoURL?: string;
   chefeId?: string; // ID do Chefe que gerencia este usuário. O próprio Chefe não terá isso.
 };
 

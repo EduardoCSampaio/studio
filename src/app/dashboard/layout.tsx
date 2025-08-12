@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Package, Users, LogOut, Beer, CookingPot, PlusSquare, DollarSign, Printer, Square, Calendar, Book, Shield, ShieldCheck, TicketPercent } from "lucide-react"
+import { LayoutDashboard, Package, Users, LogOut, Beer, CookingPot, PlusSquare, DollarSign, Printer, Square, Calendar, Book, Shield, ShieldCheck, TicketPercent, Settings } from "lucide-react"
 
 import {
   Sidebar,
@@ -32,6 +32,7 @@ function DashboardSidebar() {
   if (!user) return null
 
   const getInitials = (name: string) => {
+    if (!name) return 'U';
     const names = name.split(' ')
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`
@@ -265,7 +266,7 @@ function DashboardSidebar() {
         <SidebarFooter>
           <div className="flex items-center gap-3 p-2">
               <Avatar>
-                  <AvatarImage src={`https://i.pravatar.cc/40?u=${user.id}`} alt={user.name} />
+                  <AvatarImage src={user.photoURL} alt={user.name} />
                   <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
@@ -274,6 +275,11 @@ function DashboardSidebar() {
               </div>
               <div className="ml-auto flex items-center gap-1">
                  <ThemeToggle />
+                 <Link href="/dashboard/settings">
+                    <Button variant="ghost" size="icon">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                 </Link>
                  <Button variant="ghost" size="icon" onClick={logout}>
                       <LogOut className="h-4 w-4" />
                   </Button>
@@ -299,7 +305,12 @@ export default function DashboardLayout({
   }, [loading, user, router])
   
   if (loading || !user) {
-      return <div className="flex items-center justify-center min-h-screen">Carregando...</div>
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <Logo />
+          <p className="mt-4">Carregando...</p>
+        </div>
+      )
   }
 
   return (

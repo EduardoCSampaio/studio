@@ -28,12 +28,12 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { type Order, type Customer, type OrderItem } from "@/lib/data"
+import { type Order, type Customer, type OrderItem, type User } from "@/lib/data"
 import { CheckCircle, DollarSign, Users, CreditCard, Trophy, Star, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { db } from "@/lib/firebase"
-import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
+import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc, getDocs } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { format } from "date-fns"
 import { useAuth } from "@/hooks/use-auth"
@@ -52,7 +52,7 @@ type WaiterRanking = {
     waiterId: string;
     waiterName: string;
     totalSales: number;
-    avatarUrl: string;
+    avatarUrl?: string;
 }
 
 type TopProduct = {
@@ -79,17 +79,21 @@ export default function DashboardPage() {
     if (!chefeId) return;
 
     const ordersQuery = query(collection(db, "orders"), where("chefeId", "==", chefeId));
-    const ordersUnsubscribe = onSnapshot(ordersQuery, (snapshot) => {
+    const ordersUnsubscribe = onSnapshot(ordersQuery, async (snapshot) => {
         const ordersList = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         })) as Order[];
-        setOrders(ordersList);
+        
+        const sortedOrders = ordersList.sort((a, b) => 
+            (b.createdAt as Timestamp)?.seconds - (a.createdAt as Timestamp)?.seconds
+        );
+        setOrders(sortedOrders);
         
         const completedOrders = ordersList.filter(order => order.status === 'Completed');
         
         updateSalesChart(completedOrders);
-        updateWaiterRanking(completedOrders);
+        await updateWaiterRanking(completedOrders, chefeId);
         updateTopProducts(completedOrders);
         updatePeakHoursChart(ordersList);
     });
@@ -132,21 +136,37 @@ export default function DashboardPage() {
       setSalesData(monthlySales);
   }
 
-  const updateWaiterRanking = (completedOrders: Order[]) => {
+  const updateWaiterRanking = async (completedOrders: Order[], chefeId: string) => {
     const salesByWaiter = completedOrders.reduce((acc, order) => {
         if (!acc[order.waiterId]) {
             acc[order.waiterId] = {
                 waiterId: order.waiterId,
                 waiterName: order.waiterName,
                 totalSales: 0,
-                avatarUrl: `https://i.pravatar.cc/40?u=${order.waiterId}`
             };
         }
         acc[order.waiterId].totalSales += order.total;
         return acc;
-    }, {} as Record<string, WaiterRanking>);
+    }, {} as Record<string, Omit<WaiterRanking, 'avatarUrl'>>);
+
+    const waiterIds = Object.keys(salesByWaiter);
+    if(waiterIds.length === 0) {
+        setWaiterRanking([]);
+        return;
+    }
+    
+    const usersQuery = query(collection(db, 'users'), where('chefeId', '==', chefeId), where('role', '==', 'Garçom'));
+    const usersSnapshot = await getDocs(usersQuery);
+    const waiterUsers = usersSnapshot.docs.map(doc => doc.data() as User);
 
     const rankedWaiters = Object.values(salesByWaiter)
+        .map(waiter => {
+            const user = waiterUsers.find(u => u.id === waiter.waiterId);
+            return {
+                ...waiter,
+                avatarUrl: user?.photoURL
+            }
+        })
         .sort((a, b) => b.totalSales - a.totalSales)
         .slice(0, 5);
         
@@ -249,7 +269,6 @@ export default function DashboardPage() {
 
   const kitchenOrders = orders.filter(o => o.items.some(i => i.department === 'Cozinha' && o.status !== 'Completed'))
   const barOrders = orders.filter(o => o.items.some(i => i.department === 'Bar' && o.status !== 'Completed'))
-  const allOrders = [...orders].sort((a, b) => (b.createdAt as Timestamp).seconds - (a.createdAt as Timestamp).seconds);
   
   const totalRevenue = orders.reduce((acc, order) => order.status === 'Completed' ? acc + order.total : acc, 0);
   const completedOrdersCount = orders.filter(order => order.status === 'Completed').length;
@@ -455,7 +474,7 @@ export default function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allOrders.length > 0 ? allOrders.map(renderOrderRow) : <TableRow><TableCell colSpan={8} className="text-center h-24">Nenhum pedido encontrado.</TableCell></TableRow>}
+                    {orders.length > 0 ? orders.map(renderOrderRow) : <TableRow><TableCell colSpan={8} className="text-center h-24">Nenhum pedido encontrado.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </CardContent>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { User, UserRole, SystemEvent } from '@/lib/data';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -36,9 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser && firebaseUser.email) {
-        // Special case for the admin user
+        setLoading(true);
+        let userQuery;
         if (firebaseUser.email === ADMIN_EMAIL) {
             setUser({
                 id: firebaseUser.uid,
@@ -46,38 +47,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 email: ADMIN_EMAIL,
                 role: 'Admin'
             });
+            setLoading(false);
+            return;
         } else {
-            // Logic for all other users
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("email", "==", firebaseUser.email));
-            const querySnapshot = await getDocs(q);
+            userQuery = query(collection(db, "users"), where("email", "==", firebaseUser.email));
+        }
 
-            if (!querySnapshot.empty) {
-                const userDoc = querySnapshot.docs[0];
-                const userData = userDoc.data();
-                setUser({
-                    id: userDoc.id,
-                    name: userData.name || firebaseUser.displayName || 'Usuário',
-                    email: firebaseUser.email,
-                    role: userData.role as UserRole,
-                    chefeId: userData.chefeId
-                });
-            } else {
-                console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore.`);
-                logSystemEvent({
-                    level: 'warning',
-                    message: `Usuário autenticado (${firebaseUser.email}) não encontrado no banco de dados Firestore.`
-                });
-                setUser(null);
-            }
+        const querySnapshot = await getDocs(userQuery);
+        if (!querySnapshot.empty) {
+            const userDocRef = doc(db, 'users', querySnapshot.docs[0].id);
+            // Listen for real-time updates on the user document
+            const unsubscribeSnapshot = onSnapshot(userDocRef, (userDoc) => {
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                     setUser({
+                        id: userDoc.id,
+                        name: userData.name || firebaseUser.displayName || 'Usuário',
+                        email: firebaseUser.email as string,
+                        role: userData.role as UserRole,
+                        chefeId: userData.chefeId,
+                        photoURL: userData.photoURL
+                    });
+                } else {
+                     setUser(null);
+                }
+                 setLoading(false);
+            });
+            return () => unsubscribeSnapshot(); // Cleanup snapshot listener
+        } else {
+            console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore.`);
+            logSystemEvent({
+                level: 'warning',
+                message: `Usuário autenticado (${firebaseUser.email}) não encontrado no banco de dados Firestore.`
+            });
+            setUser(null);
+            setLoading(false);
         }
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const logout = async () => {
