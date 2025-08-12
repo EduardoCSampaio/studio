@@ -22,6 +22,7 @@ export type OrderItem = {
   quantity: number;
   department: 'Cozinha' | 'Bar' | 'Geral';
   status?: 'Cancelled';
+  promotionId?: string;
 };
 
 export type Order = {
@@ -99,5 +100,16 @@ export type SystemEvent = {
     level: 'info' | 'warning' | 'error';
     message: string;
     details?: Record<string, any>;
+};
+
+export type Promotion = {
+    id: string;
+    name: string;
+    products: Product[];
+    originalPrice: number;
+    discountPercentage: number;
+    finalPrice: number;
+    chefeId: string;
+    isActive: boolean;
 };
     

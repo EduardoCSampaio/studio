@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Package, Users, LogOut, Beer, CookingPot, PlusSquare, DollarSign, Printer, Square, Calendar, Book, Shield, ShieldCheck } from "lucide-react"
+import { LayoutDashboard, Package, Users, LogOut, Beer, CookingPot, PlusSquare, DollarSign, Printer, Square, Calendar, Book, Shield, ShieldCheck, TicketPercent } from "lucide-react"
 
 import {
   Sidebar,
@@ -170,6 +170,20 @@ function DashboardSidebar() {
                 <Link href="/dashboard/cashier">
                   <DollarSign />
                   <span>Caixa</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+           )}
+           {userCan(['Chefe', 'Caixa']) && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/dashboard/promotions"}
+                tooltip="Promoções"
+              >
+                <Link href="/dashboard/promotions">
+                  <TicketPercent />
+                  <span>Promoções</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
