@@ -2,9 +2,8 @@
 "use client"
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from '@/lib/firebase';
-import { doc, setDoc } from "firebase/firestore";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from '@/lib/firebase';
 import {
   Card,
   CardContent,
@@ -50,34 +49,18 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, testUser.email, '123456');
       toast({ title: `Bem-vindo, ${testUser.name}!` });
-      // Redirect logic is now in useEffect
+      // Redirect logic is in useEffect
     } catch (error: any) {
-        // If login fails because user doesn't exist, create it.
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, testUser.email, '123456');
-                const firebaseUser = userCredential.user;
-
-                // Also create a document in Firestore for this new user
-                await setDoc(doc(db, "users", firebaseUser.uid), {
-                    name: testUser.name,
-                    email: testUser.email,
-                    role: testUser.role,
-                });
-                
-                toast({ title: `Conta de teste criada para ${testUser.name}. Bem-vindo!` });
-                 // Redirect logic is now in useEffect
-            } catch (signupError: any) {
-                toast({
-                    variant: "destructive",
-                    title: "Falha na criação do usuário",
-                    description: signupError.message,
-                });
-            }
-        } else {
              toast({
                 variant: "destructive",
                 title: "Falha na autenticação",
+                description: "Usuário ou senha inválidos. Contate o administrador.",
+            });
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Erro de Autenticação",
                 description: error.message,
             });
         }
