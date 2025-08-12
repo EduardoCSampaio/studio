@@ -17,7 +17,7 @@ interface AuthContextType {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAIL = "admin@namata.com";
+const ADMIN_EMAIL = "admin@ecs.com";
 
 const logSystemEvent = async (event: Omit<SystemEvent, 'id' | 'timestamp'>) => {
     try {

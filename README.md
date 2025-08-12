@@ -1,6 +1,6 @@
-# NaMata - Sistema de Gestão para Restaurantes
+# ECS - Sistema de Gestão para Restaurantes
 
-NaMata é um sistema de Ponto de Venda (PDV) e gestão completo, projetado para otimizar as operações diárias de restaurantes, bares e casas noturnas. Desenvolvido com tecnologias modernas, o sistema oferece uma interface intuitiva e funcionalidades robustas para gerenciar todo o fluxo de trabalho, desde o check-in do cliente até o fechamento financeiro do dia.
+ECS é um sistema de Ponto de Venda (PDV) e gestão completo, projetado para otimizar as operações diárias de restaurantes, bares e casas noturnas. Desenvolvido com tecnologias modernas, o sistema oferece uma interface intuitiva e funcionalidades robustas para gerenciar todo o fluxo de trabalho, desde o check-in do cliente até o fechamento financeiro do dia.
 
 O projeto foi construído de forma colaborativa e iterativa, focando em resolver problemas reais do setor com soluções eficientes e elegantes.
 
@@ -74,14 +74,17 @@ O sistema é dividido em módulos acessíveis com base em perfis de usuário, ga
 
 ### Perfis de Teste
 
-A tela de login permite simular a experiência de cada membro da equipe. Não é necessário criar contas; basta clicar no perfil desejado para fazer login com um usuário de teste:
+A tela de login permite simular a experiência de cada membro da equipe. Não é necessário criar contas; basta usar as credenciais abaixo para fazer login:
 
-- **Chefe:** `chefe@namata.com`
-- **Portaria:** `portaria@namata.com`
-- **Garçom:** `garcom@namata.com`
-- **Bar:** `bar@namata.com`
-- **Cozinha:** `cozinha@namata.com`
-- **Caixa:** `caixa@namata.com`
+- **Chefe:** `chefe@ecs.com`
+- **Portaria:** `portaria@ecs.com`
+- **Garçom:** `garcom@ecs.com`
+- **Bar:** `bar@ecs.com`
+- **Cozinha:** `cozinha@ecs.com`
+- **Caixa:** `caixa@ecs.com`
+- **Admin:** `admin@ecs.com`
+
+*A senha para todos os usuários de teste é `123456`.*
 
 ### Fluxo de Trabalho Básico
 
