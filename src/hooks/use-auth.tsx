@@ -17,6 +17,8 @@ interface AuthContextType {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
+const ADMIN_EMAIL = "admin@namata.com";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -25,25 +27,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser && firebaseUser.email) {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", firebaseUser.email));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            const userDoc = querySnapshot.docs[0];
-            const userData = userDoc.data();
+        // Special case for the admin user
+        if (firebaseUser.email === ADMIN_EMAIL) {
             setUser({
-                id: userDoc.id,
-                name: userData.name || firebaseUser.displayName || 'Usuário',
-                email: firebaseUser.email,
-                role: userData.role as UserRole,
-                chefeId: userData.chefeId
+                id: firebaseUser.uid,
+                name: 'Admin',
+                email: ADMIN_EMAIL,
+                role: 'Admin'
             });
         } else {
-            console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore.`);
-            setUser(null);
-        }
+            // Logic for all other users
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", firebaseUser.email));
+            const querySnapshot = await getDocs(q);
 
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0];
+                const userData = userDoc.data();
+                setUser({
+                    id: userDoc.id,
+                    name: userData.name || firebaseUser.displayName || 'Usuário',
+                    email: firebaseUser.email,
+                    role: userData.role as UserRole,
+                    chefeId: userData.chefeId
+                });
+            } else {
+                console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore.`);
+                setUser(null);
+            }
+        }
       } else {
         setUser(null);
       }
