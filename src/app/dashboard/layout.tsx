@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Package, Users, LogOut, Beer, CookingPot, PlusSquare, DollarSign, Printer, Square, Calendar, Book } from "lucide-react"
+import { LayoutDashboard, Package, Users, LogOut, Beer, CookingPot, PlusSquare, DollarSign, Printer, Square, Calendar, Book, Shield } from "lucide-react"
 
 import {
   Sidebar,
@@ -48,6 +48,20 @@ function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
+          {userCan(['Admin']) && (
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/dashboard/admin"}
+                  tooltip="Admin"
+                >
+                  <Link href="/dashboard/admin">
+                    <Shield />
+                    <span>Admin</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+          )}
           {userCan(['Chefe']) && (
              <SidebarMenuItem>
                 <SidebarMenuButton

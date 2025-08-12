@@ -18,6 +18,7 @@ const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 // This is a simplified simulation. In a real app, you'd fetch this from Firestore
 // based on the FirebaseUser's UID.
 const userRoles: Record<string, UserRole> = {
+  'admin@namata.com': 'Admin',
   'chefe@namata.com': 'Chefe',
   'portaria@namata.com': 'Portaria',
   'garcom@namata.com': 'Garçom',

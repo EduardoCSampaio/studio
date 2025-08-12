@@ -38,7 +38,7 @@ export type Order = {
   printedAt?: any | null; // Firestore server timestamp or null
 };
 
-export type UserRole = 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Caixa' | 'Cozinha';
+export type UserRole = 'Admin' | 'Chefe' | 'Portaria' | 'Garçom' | 'Bar' | 'Caixa' | 'Cozinha';
 
 export type User = {
   id: string;
@@ -88,6 +88,7 @@ export type DailyClosing = {
 
 // Mock data for testing login profiles
 export const testUsers: Omit<User, 'id'>[] = [
+    { name: 'Admin', role: 'Admin', email: 'admin@namata.com' },
     { name: 'Chefe', role: 'Chefe', email: 'chefe@namata.com' },
     { name: 'Portaria', role: 'Portaria', email: 'portaria@namata.com' },
     { name: 'Garçom', role: 'Garçom', email: 'garcom@namata.com' },
