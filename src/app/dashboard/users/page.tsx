@@ -262,38 +262,38 @@ export default function UsersPage() {
                setNewUser({ name: "", email: "", password: "", role: "", chefePassword: "" });
            }
        }}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Usuário</DialogTitle>
             <DialogDescription>
               Preencha os dados do novo funcionário. Ele usará o e-mail e senha para fazer login. O processo é automático.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">
                 Nome
               </Label>
-              <Input id="name" value={newUser.name} onChange={handleInputChange} className="col-span-3" placeholder="Ex: João da Silva" />
+              <Input id="name" value={newUser.name} onChange={handleInputChange} placeholder="Ex: João da Silva" />
             </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
+             <div className="space-y-2">
+              <Label htmlFor="email">
                 E-mail
               </Label>
-              <Input id="email" type="email" value={newUser.email} onChange={handleInputChange} className="col-span-3" placeholder="Ex: joao@email.com" />
+              <Input id="email" type="email" value={newUser.email} onChange={handleInputChange} placeholder="Ex: joao@email.com" />
             </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
+             <div className="space-y-2">
+              <Label htmlFor="password">
                 Senha
               </Label>
-              <Input id="password" type="password" value={newUser.password} onChange={handleInputChange} className="col-span-3" placeholder="Mínimo 6 caracteres" />
+              <Input id="password" type="password" value={newUser.password} onChange={handleInputChange} placeholder="Mínimo 6 caracteres" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-               <Label htmlFor="role" className="text-right">
+            <div className="space-y-2">
+               <Label htmlFor="role">
                 Cargo
               </Label>
                 <Select value={newUser.role} onValueChange={handleRoleChange}>
-                    <SelectTrigger className="col-span-3">
+                    <SelectTrigger>
                         <SelectValue placeholder="Selecione um cargo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -303,16 +303,16 @@ export default function UsersPage() {
                     </SelectContent>
                 </Select>
             </div>
-            <Separator className="my-2" />
-             <div className="grid grid-cols-4 items-center gap-4">
-               <Label htmlFor="chefePassword" className="text-right">
-                Sua Senha
+            <Separator className="my-4" />
+             <div className="space-y-2">
+               <Label htmlFor="chefePassword">
+                Sua Senha de Chefe
               </Label>
-              <Input id="chefePassword" type="password" value={newUser.chefePassword} onChange={handleInputChange} className="col-span-3" placeholder="Confirme sua senha" />
+              <Input id="chefePassword" type="password" value={newUser.chefePassword} onChange={handleInputChange} placeholder="Confirme sua senha para autorizar" />
+               <p className="text-xs text-muted-foreground">
+                    Para sua segurança, precisamos que você confirme sua senha de Chefe para criar um novo usuário.
+                </p>
             </div>
-            <p className="text-xs text-muted-foreground col-start-2 col-span-3">
-                Para sua segurança, precisamos que você confirme sua senha de Chefe para criar um novo usuário.
-            </p>
           </div>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
