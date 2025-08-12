@@ -8,7 +8,7 @@ export function Logo() {
         alt="ECS Logo"
         width={140}
         height={40}
-        className="h-10 w-auto"
+        className="h-12 w-auto"
         priority
       />
     </div>
