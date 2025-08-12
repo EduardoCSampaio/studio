@@ -44,7 +44,8 @@ import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc } from "fi
 import { db, auth } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth"
+import { Separator } from "@/components/ui/separator"
 
 const availableRoles: UserRole[] = ['Portaria', 'Garçom', 'Bar', 'Caixa', 'Cozinha'];
 
@@ -61,7 +62,8 @@ export default function UsersPage() {
     name: "",
     email: "",
     password: "",
-    role: "" as UserRole | ""
+    role: "" as UserRole | "",
+    chefePassword: ""
   });
 
   React.useEffect(() => {
@@ -69,7 +71,6 @@ export default function UsersPage() {
     if (!chefeId) return;
 
     const usersCol = collection(db, 'users');
-    // Chefe pode ver todos os usuários dele, exceto ele mesmo e outros chefes.
     const q = query(usersCol, where("chefeId", "==", chefeId));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -100,9 +101,7 @@ export default function UsersPage() {
   const handleAddUser = async () => {
     const chefeId = getChefeId();
     const currentChefe = user; 
-    const currentChefePassword = prompt("Para confirmar a criação do usuário, por favor, insira sua senha de Chefe:");
-
-
+    
     if (!newUser.name || !newUser.email || !newUser.password || !newUser.role || !chefeId || !currentChefe) {
         toast({
             variant: "destructive",
@@ -111,7 +110,7 @@ export default function UsersPage() {
         });
         return;
     }
-     if (!currentChefePassword) {
+     if (!newUser.chefePassword) {
         toast({ variant: "destructive", title: "Senha necessária", description: "A senha do Chefe é necessária para autorizar a criação." });
         return;
     }
@@ -133,7 +132,7 @@ export default function UsersPage() {
             description: `${newUser.name} foi adicionado e já pode fazer login.`,
         });
         
-        setNewUser({ name: "", email: "", password: "", role: "" });
+        setNewUser({ name: "", email: "", password: "", role: "", chefePassword: "" });
         setAddDialogOpen(false);
 
     } catch (error: any) {
@@ -152,13 +151,14 @@ export default function UsersPage() {
     } finally {
         if (currentChefe.email) {
             try {
-                await signInWithEmailAndPassword(auth, currentChefe.email, currentChefePassword);
-            } catch (reauthError) {
+                // Re-autentica o chefe para restaurar a sessão original
+                await signInWithEmailAndPassword(auth, currentChefe.email, newUser.chefePassword);
+            } catch (reauthError: any) {
                 console.error("Failed to re-authenticate Chefe:", reauthError);
                 toast({
                     variant: "destructive",
-                    title: "Sessão Expirada",
-                    description: "Não foi possível re-autenticar. Por favor, faça login novamente."
+                    title: "Sua sessão expirou ou a senha está incorreta",
+                    description: "Não foi possível re-autenticar. Por favor, tente novamente ou faça login de novo."
                 });
             }
         }
@@ -256,7 +256,12 @@ export default function UsersPage() {
         </Card>
       </div>
 
-       <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
+       <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => {
+           setAddDialogOpen(isOpen);
+           if (!isOpen) {
+               setNewUser({ name: "", email: "", password: "", role: "", chefePassword: "" });
+           }
+       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Usuário</DialogTitle>
@@ -298,6 +303,16 @@ export default function UsersPage() {
                     </SelectContent>
                 </Select>
             </div>
+            <Separator className="my-2" />
+             <div className="grid grid-cols-4 items-center gap-4">
+               <Label htmlFor="chefePassword" className="text-right">
+                Sua Senha
+              </Label>
+              <Input id="chefePassword" type="password" value={newUser.chefePassword} onChange={handleInputChange} className="col-span-3" placeholder="Confirme sua senha" />
+            </div>
+            <p className="text-xs text-muted-foreground col-start-2 col-span-3">
+                Para sua segurança, precisamos que você confirme sua senha de Chefe para criar um novo usuário.
+            </p>
           </div>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
@@ -335,3 +350,5 @@ export default function UsersPage() {
     </>
   )
 }
+
+    
