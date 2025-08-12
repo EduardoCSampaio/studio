@@ -104,26 +104,28 @@ export default function ReportsPage() {
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
         const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
         
-        const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
-        const endOfDayTimestamp = Timestamp.fromDate(endOfDay);
-
-        const allOrdersQuery = query(collection(db, "orders"), 
-             where("chefeId", "==", chefeId),
-             where("createdAt", ">=", startOfDayTimestamp),
-             where("createdAt", "<=", endOfDayTimestamp)
-        );
+        const allOrdersQuery = query(collection(db, "orders"), where("chefeId", "==", chefeId));
         const allOrdersSnapshot = await getDocs(allOrdersQuery);
-        const allOrders = allOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Order);
+        
+        const allOrdersForChefe = allOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Order);
+
+        const allOrders = allOrdersForChefe.filter(order => {
+             if (!order.createdAt) return false;
+             const orderDate = (order.createdAt as Timestamp).toDate();
+             return orderDate >= startOfDay && orderDate <= endOfDay;
+        });
+
+        const customersQuery = query(collection(db, "customers"), where("chefeId", "==", chefeId));
+        const customersSnapshot = await getDocs(customersQuery);
+        const allCustomersForChefe = customersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data(), checkIn: (doc.data().checkIn as Timestamp).toDate()}) as Customer);
+        
+        const todaysCustomers = allCustomersForChefe.filter(customer => {
+            const checkInDate = customer.checkIn;
+            return checkInDate >= startOfDay && checkInDate <= endOfDay;
+        })
+        const totalCustomers = todaysCustomers.length;
         
         const completedOrders = allOrders.filter(order => order.status === "Completed");
-
-        const customersQuery = query(collection(db, "customers"), 
-            where("chefeId", "==", chefeId),
-            where("checkIn", ">=", startOfDayTimestamp),
-            where("checkIn", "<=", endOfDayTimestamp)
-        );
-        const customersSnapshot = await getDocs(customersQuery);
-        const totalCustomers = customersSnapshot.size;
 
         const totalRevenue = completedOrders.reduce((acc, order) => acc + order.total, 0);
         const serviceFeePercentage = 0.10;
@@ -138,7 +140,7 @@ export default function ReportsPage() {
         const totalCancelledValue = cancelledItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
         const closingDoc: Omit<DailyClosing, 'id' | 'closedAt'> = {
-            date: startOfDayTimestamp,
+            date: Timestamp.fromDate(startOfDay),
             closedByUserId: user.id,
             closedByUserName: user.name,
             totalRevenue: totalRevenue,
