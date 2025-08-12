@@ -86,17 +86,24 @@ export default function DashboardPage() {
         updateWaiterRanking(ordersList);
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTimestamp = Timestamp.fromDate(today);
     const customersQuery = query(
         collection(db, "customers"), 
-        where("chefeId", "==", chefeId),
-        where("checkIn", ">=", todayTimestamp)
+        where("chefeId", "==", chefeId)
     );
     const customersUnsubscribe = onSnapshot(customersQuery, (snapshot) => {
-        const customersList = snapshot.docs.map(doc => doc.data() as Customer);
-        setCustomersToday(customersList);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const customersList = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                checkIn: (data.checkIn as Timestamp).toDate()
+            } as Customer;
+        });
+
+        const todaysCustomers = customersList.filter(c => c.checkIn.getTime() >= today.getTime());
+        setCustomersToday(todaysCustomers);
     });
     
     return () => {
