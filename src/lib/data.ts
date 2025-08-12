@@ -92,4 +92,12 @@ export type DailyClosing = {
     totalCancelledValue: number;
     chefeId: string;
 }
+
+export type SystemEvent = {
+    id: string;
+    timestamp: any; // Firestore server timestamp
+    level: 'info' | 'warning' | 'error';
+    message: string;
+    details?: Record<string, any>;
+};
     

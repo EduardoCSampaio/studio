@@ -5,8 +5,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { User, UserRole } from '@/lib/data';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { User, UserRole, SystemEvent } from '@/lib/data';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +18,17 @@ interface AuthContextType {
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
 const ADMIN_EMAIL = "admin@namata.com";
+
+const logSystemEvent = async (event: Omit<SystemEvent, 'id' | 'timestamp'>) => {
+    try {
+        await addDoc(collection(db, "system_events"), {
+            ...event,
+            timestamp: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Failed to log system event:", error);
+    }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
@@ -53,6 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 });
             } else {
                 console.warn(`User ${firebaseUser.email} found in Auth but not in Firestore.`);
+                logSystemEvent({
+                    level: 'warning',
+                    message: `Usuário autenticado (${firebaseUser.email}) não encontrado no banco de dados Firestore.`
+                });
                 setUser(null);
             }
         }
