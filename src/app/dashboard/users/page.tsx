@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, Trash2 } from "lucide-react"
 import { type User, UserRole } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
@@ -51,8 +51,9 @@ const availableRoles: UserRole[] = ['Portaria', 'Garçom', 'Bar', 'Caixa', 'Cozi
 export default function UsersPage() {
   const { user, getChefeId } = useAuth()
   const [users, setUsers] = React.useState<User[]>([])
-  const [isDialogOpen, setDialogOpen] = React.useState(false);
-  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState<User | null>(null);
+  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
 
@@ -68,6 +69,7 @@ export default function UsersPage() {
     if (!chefeId) return;
 
     const usersCol = collection(db, 'users');
+    // Chefe pode ver todos os usuários dele, exceto ele mesmo e outros chefes.
     const q = query(usersCol, where("chefeId", "==", chefeId));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -80,7 +82,7 @@ export default function UsersPage() {
                 role: data.role,
             } as User;
         });
-        setUsers(userList);
+        setUsers(userList.filter(u => u.role !== 'Chefe'));
     });
 
     return () => unsubscribe();
@@ -98,7 +100,7 @@ export default function UsersPage() {
   const handleAddUser = async () => {
     const chefeId = getChefeId();
     const currentChefe = user; 
-    const currentChefePassword = prompt("Para confirmar, por favor, insira sua senha de Chefe:");
+    const currentChefePassword = prompt("Para confirmar a criação do usuário, por favor, insira sua senha de Chefe:");
 
 
     if (!newUser.name || !newUser.email || !newUser.password || !newUser.role || !chefeId || !currentChefe) {
@@ -117,10 +119,8 @@ export default function UsersPage() {
     setIsLoading(true);
     
     try {
-        // 1. Create user in Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password);
         
-        // 2. Add user to Firestore database
         await addDoc(collection(db, "users"), {
             name: newUser.name,
             email: newUser.email,
@@ -134,7 +134,7 @@ export default function UsersPage() {
         });
         
         setNewUser({ name: "", email: "", password: "", role: "" });
-        setDialogOpen(false);
+        setAddDialogOpen(false);
 
     } catch (error: any) {
         let description = "Ocorreu um erro ao salvar o novo usuário.";
@@ -150,7 +150,6 @@ export default function UsersPage() {
             description: description,
         });
     } finally {
-        // 3. Sign the Chefe back in to restore their session
         if (currentChefe.email) {
             try {
                 await signInWithEmailAndPassword(auth, currentChefe.email, currentChefePassword);
@@ -168,7 +167,32 @@ export default function UsersPage() {
   }
 
   const openDeleteDialog = (user: User) => {
-    // Implementar a lógica de deleção se necessário
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  }
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsLoading(true);
+
+    try {
+        await deleteDoc(doc(db, "users", userToDelete.id));
+        toast({
+            title: "Usuário Removido",
+            description: `O usuário ${userToDelete.name} foi removido do banco de dados. Lembre-se de removê-lo também do Firebase Authentication para bloquear o acesso.`
+        });
+        setUserToDelete(null);
+        setDeleteDialogOpen(false);
+    } catch (error) {
+        console.error("Error deleting user: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Remover Usuário",
+            description: "Não foi possível remover o usuário do banco de dados."
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -181,7 +205,7 @@ export default function UsersPage() {
               Gerencie os funcionários do seu restaurante.
             </p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Usuário
           </Button>
@@ -200,6 +224,7 @@ export default function UsersPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email (Login)</TableHead>
                   <TableHead>Cargo</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,11 +235,17 @@ export default function UsersPage() {
                     <TableCell>
                       <Badge variant={'secondary'}>{user.role}</Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(user)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <span className="sr-only">Remover Usuário</span>
+                        </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {users.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       Nenhum usuário encontrado. Clique em "Adicionar Usuário" para começar.
                     </TableCell>
                   </TableRow>
@@ -225,12 +256,12 @@ export default function UsersPage() {
         </Card>
       </div>
 
-       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+       <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Usuário</DialogTitle>
             <DialogDescription>
-              Preencha os dados do novo funcionário. Ele usará o e-mail e senha para fazer login.
+              Preencha os dados do novo funcionário. Ele usará o e-mail e senha para fazer login. O processo é automático.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -274,6 +305,31 @@ export default function UsersPage() {
             </DialogClose>
             <Button onClick={handleAddUser} disabled={isLoading}>{isLoading ? "Adicionando..." : "Adicionar Usuário"}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Confirmar Remoção</DialogTitle>
+                <DialogDescription>
+                    Tem certeza que deseja remover o usuário <b>{userToDelete?.name}</b>? Esta ação removerá o registro do banco de dados.
+                </DialogDescription>
+            </DialogHeader>
+             <Alert variant="destructive" className="mt-4">
+                <AlertTitle>Ação Manual Necessária!</AlertTitle>
+                <AlertDescription>
+                    Para remover completamente o acesso, você também deve excluir este usuário do console do <b>Firebase Authentication</b>. Esta é uma medida de segurança.
+                </AlertDescription>
+            </Alert>
+            <DialogFooter className="mt-4">
+                 <DialogClose asChild>
+                    <Button variant="outline" disabled={isLoading}>Cancelar</Button>
+                </DialogClose>
+                <Button onClick={handleDeleteUser} variant="destructive" disabled={isLoading}>
+                    {isLoading ? "Removendo..." : "Sim, Remover"}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
