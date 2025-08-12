@@ -16,12 +16,23 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { storage, db } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Camera } from 'lucide-react';
+import { Camera, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function SettingsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const { toast } = useToast();
   const [newPhoto, setNewPhoto] = React.useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
@@ -45,11 +56,30 @@ export default function SettingsPage() {
     }
   };
 
+  const resetFileInput = () => {
+    setNewPhoto(null);
+    setPhotoPreview(null);
+    if(fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   const handleSave = async () => {
     if (!newPhoto || !user) return;
 
     setIsUploading(true);
     try {
+      // Deleta a foto antiga se existir
+      if (user.photoURL) {
+          try {
+            const oldPhotoRef = ref(storage, user.photoURL);
+            await deleteObject(oldPhotoRef);
+          } catch (error: any) {
+              // Ignora erro se o arquivo não existir (pode acontecer)
+              if (error.code !== 'storage/object-not-found') {
+                  console.warn("Could not delete old photo:", error);
+              }
+          }
+      }
+
       const filePath = `profile-pictures/${user.id}/${newPhoto.name}`;
       const storageRef = ref(storage, filePath);
       const uploadResult = await uploadBytes(storageRef, newPhoto);
@@ -59,9 +89,10 @@ export default function SettingsPage() {
       await updateDoc(userDocRef, {
         photoURL: downloadURL,
       });
+      
+      await refreshUser();
 
-      setNewPhoto(null);
-      setPhotoPreview(null);
+      resetFileInput();
       toast({
         title: 'Sucesso!',
         description: 'Sua foto de perfil foi atualizada.',
@@ -77,6 +108,51 @@ export default function SettingsPage() {
       setIsUploading(false);
     }
   };
+
+  const handleRemovePhoto = async () => {
+    if (!user || !user.photoURL) return;
+
+    setIsUploading(true);
+     try {
+      const photoRef = ref(storage, user.photoURL);
+      await deleteObject(photoRef);
+      
+      const userDocRef = doc(db, 'users', user.id);
+      await updateDoc(userDocRef, {
+        photoURL: "",
+      });
+
+      await refreshUser();
+
+      resetFileInput();
+      toast({
+        title: 'Sucesso!',
+        description: 'Sua foto de perfil foi removida.',
+      });
+    } catch (error: any) {
+        // Se o arquivo não existir no storage, mas existir no DB, remove do DB
+        if (error.code === 'storage/object-not-found') {
+             const userDocRef = doc(db, 'users', user.id);
+            await updateDoc(userDocRef, { photoURL: "" });
+            await refreshUser();
+            resetFileInput();
+             toast({
+                title: 'Sucesso!',
+                description: 'Sua foto de perfil foi removida.',
+            });
+        } else {
+            console.error('Error removing photo:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao Remover',
+                description: 'Não foi possível remover sua foto de perfil.',
+            });
+        }
+    } finally {
+        setIsUploading(false);
+    }
+  }
+
 
   if (loading || !user) {
     return (
@@ -131,22 +207,43 @@ export default function SettingsPage() {
             <p className="text-sm font-medium text-primary mt-1">{user.role}</p>
           </div>
         </CardContent>
-        {photoPreview && (
+        {(photoPreview || user.photoURL) && (
           <CardFooter className="justify-end gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setNewPhoto(null);
-                setPhotoPreview(null);
-                if(fileInputRef.current) fileInputRef.current.value = "";
-              }}
-              disabled={isUploading}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isUploading}>
-              {isUploading ? 'Salvando...' : 'Salvar Nova Foto'}
-            </Button>
+             {photoPreview ? (
+                <>
+                    <Button
+                    variant="ghost"
+                    onClick={resetFileInput}
+                    disabled={isUploading}
+                    >
+                    Cancelar
+                    </Button>
+                    <Button onClick={handleSave} disabled={isUploading}>
+                    {isUploading ? 'Salvando...' : 'Salvar Nova Foto'}
+                    </Button>
+                </>
+             ) : (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                         <Button variant="destructive" disabled={isUploading}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Remover Foto
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta ação removerá sua foto de perfil permanentemente. Você poderá adicionar uma nova a qualquer momento.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRemovePhoto} className="bg-destructive hover:bg-destructive/90">Sim, Remover</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+             )}
           </CardFooter>
         )}
       </Card>

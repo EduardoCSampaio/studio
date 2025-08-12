@@ -6,13 +6,14 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { User, UserRole, SystemEvent } from '@/lib/data';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, onSnapshot, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
   getChefeId: () => string | null;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -104,8 +105,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user.role === 'Chefe' ? user.id : user.chefeId || null;
   }, [user])
 
+  const refreshUser = async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser || !firebaseUser.email) {
+        return;
+    }
+    
+    let userDocRef;
+    if (firebaseUser.email !== ADMIN_EMAIL) {
+        const userQuery = query(collection(db, "users"), where("email", "==", firebaseUser.email));
+        const querySnapshot = await getDocs(userQuery);
+        if (!querySnapshot.empty) {
+             userDocRef = querySnapshot.docs[0].ref;
+        } else {
+            return;
+        }
+    } else {
+        return; // Admin user is static, no need to refresh from DB
+    }
+
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUser({
+            id: userDoc.id,
+            name: userData.name || firebaseUser.displayName || 'Usuário',
+            email: firebaseUser.email as string,
+            role: userData.role as UserRole,
+            chefeId: userData.chefeId,
+            photoURL: userData.photoURL
+        });
+    }
+  };
+
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout, getChefeId }}>
+    <AuthContext.Provider value={{ user, loading, logout, getChefeId, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
