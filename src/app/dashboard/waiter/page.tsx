@@ -36,8 +36,7 @@ export default function WaiterPage() {
 
     const tablesCol = query(
         collection(db, 'tables'), 
-        where("chefeId", "==", chefeId),
-        orderBy('id')
+        where("chefeId", "==", chefeId)
     );
     const unsubscribe = onSnapshot(tablesCol, (snapshot) => {
         const tableList = snapshot.docs.map(doc => {
@@ -48,7 +47,7 @@ export default function WaiterPage() {
                 orderId: data.orderId,
             } as Table;
         });
-        setTables(tableList);
+        setTables(tableList.sort((a, b) => a.id - b.id));
     });
 
     return () => unsubscribe();
@@ -199,5 +198,3 @@ export default function WaiterPage() {
     </div>
   )
 }
-
-    
