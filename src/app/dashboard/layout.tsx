@@ -19,7 +19,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/logo"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/use-auth.tsx"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { UserRole } from "@/lib/data"
@@ -132,6 +132,7 @@ function DashboardSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
            )}
+           {userCan(['Chefe', 'Caixa', 'Portaria', 'Garçom']) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -144,6 +145,7 @@ function DashboardSidebar() {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+           )}
            {userCan(['Chefe', 'Caixa']) && (
             <SidebarMenuItem>
               <SidebarMenuButton

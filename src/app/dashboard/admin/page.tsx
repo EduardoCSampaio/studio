@@ -29,16 +29,21 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle, Trash2, Users } from "lucide-react"
+import { PlusCircle, Trash2, Users, ShoppingCart, TrendingUp } from "lucide-react"
 import { type User, UserRole } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc, getDocs } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc, getDocs, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
+type Chefe = User & {
+    createdAt?: Timestamp;
+}
+
 export default function AdminPage() {
-  const [chefs, setChefs] = React.useState<User[]>([])
+  const [chefs, setChefs] = React.useState<Chefe[]>([])
+  const [totalOrders, setTotalOrders] = React.useState(0);
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [isViewTeamDialogOpen, setViewTeamDialogOpen] = React.useState(false);
@@ -63,15 +68,22 @@ export default function AdminPage() {
             const data = doc.data();
             return {
                 id: doc.id,
-                name: data.name,
-                email: data.email,
-                role: data.role,
-            } as User;
+                ...data,
+            } as Chefe;
         });
         setChefs(chefList);
     });
 
-    return () => unsubscribe();
+    const ordersCol = collection(db, 'orders');
+    const ordersUnsubscribe = onSnapshot(ordersCol, (snapshot) => {
+        setTotalOrders(snapshot.size);
+    });
+
+
+    return () => {
+        unsubscribe();
+        ordersUnsubscribe();
+    };
   }, [])
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,6 +108,7 @@ export default function AdminPage() {
             name: newChefe.name,
             email: newChefe.email,
             role: "Chefe" as UserRole,
+            createdAt: Timestamp.now(),
         });
 
         toast({
@@ -174,24 +187,68 @@ export default function AdminPage() {
     }
   }
 
+  const newClientsLast30Days = React.useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+
+    return chefs.filter(chefe => 
+        chefe.createdAt && chefe.createdAt >= thirtyDaysAgoTimestamp
+    ).length;
+  }, [chefs]);
+
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-headline font-bold text-foreground">Admin</h1>
+            <h1 className="text-4xl font-headline font-bold text-foreground">Admin Dashboard</h1>
             <p className="text-muted-foreground">
-              Gerencie as contas Chefe (seus clientes) do sistema.
+              Gerencie as contas Chefe (seus clientes) e veja as métricas do sistema.
             </p>
           </div>
           <Button onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Chefe
+            Adicionar Cliente
           </Button>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">{chefs.length}</div>
+                <p className="text-xs text-muted-foreground">Total de clientes ("Chefes") cadastrados.</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Uso da Plataforma</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">{totalOrders}</div>
+                <p className="text-xs text-muted-foreground">Total de pedidos processados pelo sistema.</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Novos Clientes</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">+{newClientsLast30Days}</div>
+                <p className="text-xs text-muted-foreground">Nos últimos 30 dias.</p>
+                </CardContent>
+            </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Chefes</CardTitle>
+            <CardTitle>Lista de Clientes</CardTitle>
             <CardDescription>
               Uma lista de todos os usuários com permissão de Chefe (clientes do sistema).
             </CardDescription>
@@ -229,7 +286,7 @@ export default function AdminPage() {
                 {chefs.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                      Nenhum Chefe encontrado. Clique em "Adicionar Chefe" para começar.
+                      Nenhum Chefe encontrado. Clique em "Adicionar Cliente" para começar.
                     </TableCell>
                   </TableRow>
                 )}
@@ -242,7 +299,7 @@ export default function AdminPage() {
        <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Chefe</DialogTitle>
+            <DialogTitle>Adicionar Novo Cliente (Chefe)</DialogTitle>
             <DialogDescription>
                 Preencha os dados do novo gestor. Isso o registrará no sistema.
             </DialogDescription>
@@ -277,7 +334,7 @@ export default function AdminPage() {
             <DialogClose asChild>
               <Button variant="outline" disabled={isLoading}>Cancelar</Button>
             </DialogClose>
-            <Button onClick={handleAddChefe} disabled={isLoading}>{isLoading ? "Adicionando..." : "Adicionar Chefe"}</Button>
+            <Button onClick={handleAddChefe} disabled={isLoading}>{isLoading ? "Adicionando..." : "Adicionar Cliente"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -312,7 +369,7 @@ export default function AdminPage() {
             <DialogHeader>
                 <DialogTitle>Equipe de {selectedChefe?.name}</DialogTitle>
                 <DialogDescription>
-                    Lista de todos os funcionários cadastrados para este Chefe.
+                    Lista de todos os funcionários cadastrados para este Cliente.
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4">
@@ -341,7 +398,7 @@ export default function AdminPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={3} className="h-24 text-center">
-                                        Este Chefe ainda não possui funcionários.
+                                        Este Cliente ainda não possui funcionários.
                                     </TableCell>
                                 </TableRow>
                             )}
