@@ -1,12 +1,27 @@
-import { Sprout } from 'lucide-react';
-
 export function Logo() {
   return (
-    <div className="flex items-center gap-3 px-2">
-      <Sprout className="h-7 w-7 text-primary" />
-      <h1 className="text-2xl font-bold font-headline text-foreground tracking-wide">
-        NaMata
-      </h1>
+    <div className="flex items-center gap-2 px-2">
+      <svg
+        width="80"
+        height="32"
+        viewBox="0 0 80 32"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-8 w-auto text-primary"
+      >
+        <path
+          d="M21.36 26.28C23.52 26.28 25.32 25.56 26.76 24.12C28.2 22.68 28.92 20.82 28.92 18.54C28.92 16.26 28.2 14.4 26.76 12.96C25.32 11.52 23.52 10.8 21.36 10.8H12.6V26.28H21.36ZM17.4 14.28H20.76C21.84 14.28 22.68 14.64 23.28 15.36C23.88 16.08 24.18 17.1 24.18 18.42C24.18 19.74 23.88 20.76 23.28 21.48C22.68 22.2 21.84 22.56 20.76 22.56H17.4V14.28Z"
+          fill="currentColor"
+        />
+        <path
+          d="M45.54 26.28V10.8H36.78V26.28H45.54Z"
+          fill="currentColor"
+        />
+        <path
+          d="M66.36 26.28C68.52 26.28 70.32 25.56 71.76 24.12C73.2 22.68 73.92 20.82 73.92 18.54C73.92 16.26 73.2 14.4 71.76 12.96C70.32 11.52 68.52 10.8 66.36 10.8H57.6V26.28H66.36ZM62.4 14.28H65.76C66.84 14.28 67.68 14.64 68.28 15.36C68.88 16.08 69.18 17.1 69.18 18.42C69.18 19.74 68.88 20.76 68.28 21.48C67.68 22.2 66.84 22.56 65.76 22.56H62.4V14.28Z"
+          fill="currentColor"
+        />
+      </svg>
     </div>
   );
 }

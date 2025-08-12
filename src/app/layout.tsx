@@ -5,7 +5,7 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'NaMata',
+  title: 'ECS - Sistema PDV',
   description: 'Restaurant Management System',
 };
 
