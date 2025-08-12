@@ -36,20 +36,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, Pencil } from "lucide-react"
 import { type Product } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, query, where, doc, updateDoc } from "firebase/firestore"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function ProductsPage() {
   const { getChefeId } = useAuth();
   const [products, setProducts] = React.useState<Product[]>([]);
-  const [isDialogOpen, setDialogOpen] = React.useState(false);
+  const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = React.useState(false);
+
   const [newProductName, setNewProductName] = React.useState("");
   const [newProductPrice, setNewProductPrice] = React.useState("");
   const [newProductDepartment, setNewProductDepartment] = React.useState<"Cozinha" | "Bar" | "Geral" | "">("");
+  
+  const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
+
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -73,6 +78,13 @@ export default function ProductsPage() {
 
     return () => unsubscribe();
   }, [getChefeId])
+  
+  const resetAddForm = () => {
+    setNewProductName("");
+    setNewProductPrice("");
+    setNewProductDepartment("");
+    setAddDialogOpen(false);
+  }
 
   const handleAddProduct = async () => {
     const chefeId = getChefeId();
@@ -98,10 +110,7 @@ export default function ProductsPage() {
             description: `${newProductName} foi adicionado ao cardápio.`,
         });
 
-        setNewProductName("");
-        setNewProductPrice("");
-        setNewProductDepartment("");
-        setDialogOpen(false);
+        resetAddForm();
     } catch (error) {
         console.error("Error adding product: ", error);
         toast({
@@ -111,6 +120,49 @@ export default function ProductsPage() {
         });
     }
   };
+  
+  const handleOpenEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setEditDialogOpen(true);
+  }
+  
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
+    
+    const { id, name, price, department } = editingProduct;
+
+    if (!name || !price || !department) {
+       toast({
+            variant: "destructive",
+            title: "Campos obrigatórios",
+            description: "Todos os campos devem ser preenchidos.",
+        });
+        return;
+    }
+
+    const productRef = doc(db, "products", id);
+
+    try {
+        await updateDoc(productRef, {
+            name: name,
+            price: Number(price),
+            department: department
+        });
+         toast({
+            title: "Produto Atualizado!",
+            description: `As informações de ${name} foram atualizadas.`,
+        });
+        setEditDialogOpen(false);
+        setEditingProduct(null);
+    } catch (error) {
+         console.error("Error updating product: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Atualizar",
+            description: "Ocorreu um erro ao atualizar o produto.",
+        });
+    }
+  }
 
 
   return (
@@ -123,7 +175,7 @@ export default function ProductsPage() {
               Gerencie os itens do cardápio do seu restaurante.
             </p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Produto
           </Button>
@@ -142,6 +194,7 @@ export default function ProductsPage() {
                   <TableHead>Nome do Produto</TableHead>
                   <TableHead>Departamento</TableHead>
                   <TableHead className="text-right">Preço</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -150,11 +203,17 @@ export default function ProductsPage() {
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.department}</TableCell>
                     <TableCell className="text-right">R$ {product.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(product)}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Editar Produto</span>
+                        </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                  {products.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       Nenhum produto encontrado. Clique em "Adicionar Produto" para começar.
                     </TableCell>
                   </TableRow>
@@ -165,7 +224,7 @@ export default function ProductsPage() {
         </Card>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={isAddDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Produto</DialogTitle>
@@ -220,12 +279,77 @@ export default function ProductsPage() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
+              <Button variant="outline" onClick={resetAddForm}>Cancelar</Button>
             </DialogClose>
             <Button onClick={handleAddProduct}>Adicionar Produto</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Product Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+            <DialogDescription>
+              Altere os detalhes do produto selecionado.
+            </DialogDescription>
+          </DialogHeader>
+          {editingProduct && (
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-name" className="text-right">
+                    Nome
+                </Label>
+                <Input
+                    id="edit-name"
+                    value={editingProduct.name}
+                    onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})}
+                    className="col-span-3"
+                />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-price" className="text-right">
+                    Preço
+                </Label>
+                <Input
+                    id="edit-price"
+                    type="number"
+                    value={editingProduct.price}
+                    onChange={(e) => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})}
+                    className="col-span-3"
+                />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-department" className="text-right">
+                    Departamento
+                </Label>
+                    <Select
+                        value={editingProduct.department}
+                        onValueChange={(value) => setEditingProduct({...editingProduct, department: value as "Cozinha" | "Bar" | "Geral"})}
+                    >
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Selecione um departamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Cozinha">Cozinha</SelectItem>
+                            <SelectItem value="Bar">Bar</SelectItem>
+                            <SelectItem value="Geral">Geral</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleUpdateProduct}>Salvar Alterações</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
   )
 }
+
+    
