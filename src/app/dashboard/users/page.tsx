@@ -43,6 +43,7 @@ import { useToast } from "@/hooks/use-toast"
 import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/hooks/use-auth"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const availableRoles: UserRole[] = ['Portaria', 'Garçom', 'Bar', 'Caixa', 'Cozinha'];
 
@@ -231,7 +232,13 @@ export default function UsersPage() {
                 </Select>
             </div>
           </div>
-          <DialogFooter>
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>Ação Manual Necessária!</AlertTitle>
+            <AlertDescription>
+                Após adicionar, você precisará criar este usuário (com mesmo e-mail e senha) no console do <b>Firebase Authentication</b> para que o login funcione.
+            </AlertDescription>
+          </Alert>
+          <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" disabled={isLoading}>Cancelar</Button>
             </DialogClose>
