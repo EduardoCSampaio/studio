@@ -27,6 +27,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
 import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { Badge } from "@/components/ui/badge"
 
 
 export default function OrderPage() {
@@ -380,5 +381,3 @@ export default function OrderPage() {
     </>
   )
 }
-
-    
