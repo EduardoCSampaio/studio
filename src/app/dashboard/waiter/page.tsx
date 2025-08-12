@@ -100,9 +100,9 @@ export default function WaiterPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 h-full">
-      <div className="w-full lg:w-2/5 xl:w-1/3">
-         <Card className="w-full max-w-md">
+    <div className="flex flex-col lg:flex-row gap-8 h-full items-start">
+      <div className="w-full lg:max-w-md lg:sticky lg:top-8">
+         <Card>
             <CardHeader>
             <CardTitle className="text-2xl font-bold font-headline">Iniciar Novo Pedido</CardTitle>
             <CardDescription>

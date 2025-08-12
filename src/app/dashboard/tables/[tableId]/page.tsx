@@ -250,15 +250,15 @@ export default function OrderPage() {
   
   return (
     <>
-    <div className="grid md:grid-cols-2 gap-8">
-      <div className="space-y-6">
+    <div className="grid lg:grid-cols-5 gap-8 items-start">
+      <div className="lg:col-span-3 space-y-6">
         <h1 className="text-4xl font-headline font-bold text-foreground">{pageTitle}</h1>
         
         <Card>
           <CardHeader>
             <CardTitle>Menu de Produtos e Promoções</CardTitle>
             <CardDescription>Adicione itens ou combos ao pedido da comanda.</CardDescription>
-             <div className="relative mt-4">
+             <div className="relative pt-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                 type="text"
@@ -270,10 +270,14 @@ export default function OrderPage() {
             </div>
           </CardHeader>
           <CardContent>
+              {searchQuery && filteredPromotions.length === 0 && filteredProducts.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">Nenhum item encontrado para "{searchQuery}".</div>
+              )}
+
               {filteredPromotions.length > 0 && (
                   <>
                     <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Star className="text-amber-500"/>Promoções</h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {filteredPromotions.map((promo) => (
                         <Button key={promo.id} variant="outline" className="h-auto flex flex-col items-start p-3 border-amber-500/50 hover:bg-amber-500/10" onClick={() => handleAddPromotion(promo)}>
                             <div className="w-full flex justify-between items-center">
@@ -284,46 +288,55 @@ export default function OrderPage() {
                         </Button>
                         ))}
                     </div>
-                    <Separator className="my-6"/>
                   </>
               )}
 
-              <h3 className="text-lg font-semibold mb-2">Cozinha</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {kitchenProducts.map((product) => (
-                  <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
-                      <span className="font-semibold">{product.name}</span>
-                      <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
-                  </Button>
-                ))}
-                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha corresponde à busca.</p>}
-              </div>
-               <h3 className="text-lg font-semibold mb-2">Bar</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                 {barProducts.map((product) => (
-                  <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
-                      <span className="font-semibold">{product.name}</span>
-                      <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
-                  </Button>
-                ))}
-                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar corresponde à busca.</p>}
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Geral</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                 {generalProducts.map((product) => (
-                  <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
-                      <span className="font-semibold">{product.name}</span>
-                      <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
-                  </Button>
-                ))}
-                {generalProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto geral corresponde à busca.</p>}
-              </div>
+              {filteredPromotions.length > 0 && (kitchenProducts.length > 0 || barProducts.length > 0 || generalProducts.length > 0) && <Separator className="my-6"/>}
+
+              {kitchenProducts.length > 0 && (
+                <>
+                    <h3 className="text-lg font-semibold mb-2">Cozinha</h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        {kitchenProducts.map((product) => (
+                        <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
+                            <span className="font-semibold">{product.name}</span>
+                            <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
+                        </Button>
+                        ))}
+                    </div>
+                </>
+              )}
+               {barProducts.length > 0 && (
+                 <>
+                    <h3 className="text-lg font-semibold mb-2">Bar</h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        {barProducts.map((product) => (
+                        <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
+                            <span className="font-semibold">{product.name}</span>
+                            <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
+                        </Button>
+                        ))}
+                    </div>
+                 </>
+               )}
+              {generalProducts.length > 0 && (
+                <>
+                    <h3 className="text-lg font-semibold mb-2">Geral</h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        {generalProducts.map((product) => (
+                        <Button key={product.id} variant="outline" className="h-auto flex flex-col items-start p-3" onClick={() => handleAddItem(product)}>
+                            <span className="font-semibold">{product.name}</span>
+                            <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
+                        </Button>
+                        ))}
+                    </div>
+                </>
+              )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="space-y-6">
-         <h1 className="text-4xl font-headline font-bold text-foreground opacity-0">.</h1>
+      <div className="lg:col-span-2 space-y-6 lg:sticky lg:top-8">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -401,4 +414,3 @@ export default function OrderPage() {
     </>
   )
 }
-
