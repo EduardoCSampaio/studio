@@ -10,16 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp, getDocs } from "firebase/firestore"
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { type Order } from "@/lib/data"
+import { type Order, type OrderItem } from "@/lib/data"
 import { Printer, Wifi, WifiOff, Eye } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
-function PrintableReceipt({ order }: { order: Order | null }) {
-    if (!order) return null;
+type PrintableOrder = Order & {
+    itemsToPrint: OrderItem[];
+}
 
-    const department = order.items[0]?.department;
+function PrintableReceipt({ order, department }: { order: PrintableOrder | null, department: string | null }) {
+    if (!order || !department) return null;
 
     return (
         <div className="p-4 bg-white text-black font-mono text-sm border border-dashed border-black mb-4 w-full">
@@ -30,9 +32,9 @@ function PrintableReceipt({ order }: { order: Order | null }) {
                 <p>{new Date().toLocaleString()}</p>
             </div>
              <div className="mb-4">
-                <h3 className="font-bold border-b border-dashed border-black text-center">--- {department?.toUpperCase()} ---</h3>
-                {order.items.map(item => (
-                    <p key={item.productId}>{item.quantity}x {item.name}</p>
+                <h3 className="font-bold border-b border-dashed border-black text-center">--- {department.toUpperCase()} ---</h3>
+                {order.itemsToPrint.map((item, index) => (
+                    <p key={`${item.productId}-${index}`}>{item.quantity}x {item.name}</p>
                 ))}
             </div>
         </div>
@@ -45,10 +47,11 @@ export default function DepartmentPrintStationPage() {
     const { getChefeId } = useAuth();
     
     const [isConnected, setIsConnected] = React.useState(true);
-    const [ordersToPrint, setOrdersToPrint] = React.useState<Order[]>([]);
+    const [ordersToPrintQueue, setOrdersToPrintQueue] = React.useState<PrintableOrder[]>([]);
     const printRef = React.useRef<HTMLDivElement>(null);
-    const [currentPrintingOrder, setCurrentPrintingOrder] = React.useState<Order | null>(null);
-    const isProcessing = React.useRef(false);
+    const [currentPrintingOrder, setCurrentPrintingOrder] = React.useState<PrintableOrder | null>(null);
+    
+    const isProcessingPrint = React.useRef(false); // Ref to prevent re-triggering print
     const [isWakeLockActive, setWakeLockActive] = React.useState(false);
     const wakeLockRef = React.useRef<any>(null);
 
@@ -97,39 +100,46 @@ export default function DepartmentPrintStationPage() {
             where("printedAt", "==", null),
         );
 
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            if (isProcessing.current) return;
-            isProcessing.current = true;
-
-            const newOrders: Order[] = [];
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const newOrdersToProcess: PrintableOrder[] = [];
              snapshot.docs.forEach(doc => {
                  const order = { id: doc.id, ...doc.data() } as Order;
-                 if (order.items.some(item => item.department === department)) {
-                    newOrders.push(order);
+                 const itemsForThisDepartment = order.items.filter(item => item.department === department);
+                 
+                 if (itemsForThisDepartment.length > 0) {
+                    newOrdersToProcess.push({
+                        ...order,
+                        itemsToPrint: itemsForThisDepartment,
+                    });
                  }
             });
 
-            if (newOrders.length > 0) {
-                 setOrdersToPrint(prev => [...prev, ...newOrders]);
+            if (newOrdersToProcess.length > 0) {
+                 setOrdersToPrintQueue(prevQueue => {
+                    const existingIds = new Set(prevQueue.map(o => o.id));
+                    const uniqueNewOrders = newOrdersToProcess.filter(o => !existingIds.has(o.id));
+                    return [...prevQueue, ...uniqueNewOrders];
+                 });
             }
            
             setIsConnected(true);
-            isProcessing.current = false;
         }, (error) => {
             console.error(`Error listening for ${department} orders:`, error);
             setIsConnected(false);
-            isProcessing.current = false;
         });
 
         return () => unsubscribe();
     }, [department, getChefeId]);
 
-    React.useEffect(() => {
-        if (ordersToPrint.length > 0 && !currentPrintingOrder) {
-            const nextOrder = ordersToPrint[0];
+
+     React.useEffect(() => {
+        // If not currently printing and there's an order in the queue, start printing it.
+        if (!isProcessingPrint.current && ordersToPrintQueue.length > 0) {
+            isProcessingPrint.current = true;
+            const nextOrder = ordersToPrintQueue[0];
             setCurrentPrintingOrder(nextOrder);
         }
-    }, [ordersToPrint, currentPrintingOrder]);
+    }, [ordersToPrintQueue]);
 
      React.useEffect(() => {
         if (currentPrintingOrder && printRef.current) {
@@ -138,17 +148,22 @@ export default function DepartmentPrintStationPage() {
                 
                 const orderRef = doc(db, "orders", currentPrintingOrder.id);
                 try {
+                    // This update is now safe because it only marks the original order
                     await updateDoc(orderRef, {
                         printedAt: serverTimestamp()
                     });
-                    setOrdersToPrint(prev => prev.filter(o => o.id !== currentPrintingOrder.id));
-                    setCurrentPrintingOrder(null);
                 } catch(error) {
                     console.error("Failed to mark order as printed:", error);
-                    setCurrentPrintingOrder(null); 
+                } finally {
+                    // This logic will run regardless of success or failure
+                    // Remove the printed order from the queue and allow the next one to print
+                    setOrdersToPrintQueue(prev => prev.filter(o => o.id !== currentPrintingOrder.id));
+                    setCurrentPrintingOrder(null);
+                    isProcessingPrint.current = false;
                 }
             }
-            const timerId = setTimeout(printAndMark, 500);
+            // Use a short timeout to allow the receipt component to render before printing
+            const timerId = setTimeout(printAndMark, 500); 
             return () => clearTimeout(timerId);
         }
     }, [currentPrintingOrder]);
@@ -195,7 +210,7 @@ export default function DepartmentPrintStationPage() {
                            ) : (
                                 <>
                                     <p className="text-lg font-medium">Aguardando novos pedidos para o {department}...</p>
-                                    <p className="text-muted-foreground">{ordersToPrint.length} pedidos na fila.</p>
+                                    <p className="text-muted-foreground">{ordersToPrintQueue.length} pedidos na fila.</p>
                                 </>
                            )}
                         </div>
@@ -209,7 +224,7 @@ export default function DepartmentPrintStationPage() {
                 </Card>
             </div>
             <div className="printable-area" ref={printRef}>
-                <PrintableReceipt order={currentPrintingOrder} />
+                <PrintableReceipt order={currentPrintingOrder} department={department} />
             </div>
         </>
     );

@@ -25,7 +25,7 @@ import { type OrderItem, type Product, type Customer, type Promotion } from "@/l
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Separator } from "@/components/ui/separator"
-import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery, onSnapshot } from "firebase/firestore"
+import { collection, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -136,6 +136,7 @@ export default function OrderPage() {
         quantity: 1,
         department: product.department,
         promotionId: promotion.id,
+        status: undefined, // Ensure status is not carried over
     }));
     
     setOrderItems(prevItems => [...prevItems, ...itemsFromPromo]);
