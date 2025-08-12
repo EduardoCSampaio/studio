@@ -6,9 +6,9 @@ export function Logo() {
       <Image
         src="/logo.png"
         alt="ECS Logo"
-        width={140}
-        height={40}
-        className="h-16 w-auto"
+        width={175}
+        height={50}
+        className="h-20 w-auto"
         priority
       />
     </div>
