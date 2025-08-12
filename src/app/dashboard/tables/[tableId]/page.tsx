@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, Trash2, Send, Star } from "lucide-react"
+import { ShoppingCart, Trash2, Send, Star, Search } from "lucide-react"
 import { type OrderItem, type Product, type Customer, type Promotion } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
@@ -28,6 +28,7 @@ import { Separator } from "@/components/ui/separator"
 import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, getDocs as getDocsFromQuery, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 
 
 export default function OrderPage() {
@@ -46,6 +47,7 @@ export default function OrderPage() {
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [pageTitle, setPageTitle] = React.useState<string>(`Comanda...`);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   React.useEffect(() => {
     const chefeId = getChefeId();
@@ -233,10 +235,18 @@ export default function OrderPage() {
         setIsSubmitting(false);
     }
   }
+  
+  const filteredPromotions = allPromotions.filter(promo =>
+    promo.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const kitchenProducts = allProducts.filter(p => p.department === "Cozinha")
-  const barProducts = allProducts.filter(p => p.department === "Bar")
-  const generalProducts = allProducts.filter(p => p.department === "Geral")
+  const filteredProducts = allProducts.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const kitchenProducts = filteredProducts.filter(p => p.department === "Cozinha")
+  const barProducts = filteredProducts.filter(p => p.department === "Bar")
+  const generalProducts = filteredProducts.filter(p => p.department === "Geral")
   
   return (
     <>
@@ -248,13 +258,23 @@ export default function OrderPage() {
           <CardHeader>
             <CardTitle>Menu de Produtos e Promoções</CardTitle>
             <CardDescription>Adicione itens ou combos ao pedido da comanda.</CardDescription>
+             <div className="relative mt-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                type="text"
+                placeholder="Buscar produto ou promoção..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                />
+            </div>
           </CardHeader>
           <CardContent>
-              {allPromotions.length > 0 && (
+              {filteredPromotions.length > 0 && (
                   <>
                     <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Star className="text-amber-500"/>Promoções</h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                        {allPromotions.map((promo) => (
+                        {filteredPromotions.map((promo) => (
                         <Button key={promo.id} variant="outline" className="h-auto flex flex-col items-start p-3 border-amber-500/50 hover:bg-amber-500/10" onClick={() => handleAddPromotion(promo)}>
                             <div className="w-full flex justify-between items-center">
                                 <span className="font-semibold text-primary">{promo.name}</span>
@@ -276,7 +296,7 @@ export default function OrderPage() {
                       <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha disponível.</p>}
+                 {kitchenProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto da cozinha corresponde à busca.</p>}
               </div>
                <h3 className="text-lg font-semibold mb-2">Bar</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -286,7 +306,7 @@ export default function OrderPage() {
                       <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar disponível.</p>}
+                {barProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do bar corresponde à busca.</p>}
               </div>
               <h3 className="text-lg font-semibold mb-2">Geral</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -296,7 +316,7 @@ export default function OrderPage() {
                       <span className="text-sm text-muted-foreground">R$ {product.price.toFixed(2)}</span>
                   </Button>
                 ))}
-                {generalProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto do departamento geral disponível.</p>}
+                {generalProducts.length === 0 && <p className="text-muted-foreground text-sm col-span-full">Nenhum produto geral corresponde à busca.</p>}
               </div>
           </CardContent>
         </Card>
@@ -381,3 +401,4 @@ export default function OrderPage() {
     </>
   )
 }
+
