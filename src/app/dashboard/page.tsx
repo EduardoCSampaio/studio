@@ -249,7 +249,7 @@ export default function DashboardPage() {
 
   const kitchenOrders = orders.filter(o => o.items.some(i => i.department === 'Cozinha' && o.status !== 'Completed'))
   const barOrders = orders.filter(o => o.items.some(i => i.department === 'Bar' && o.status !== 'Completed'))
-  const allOrders = orders.sort((a, b) => (b.createdAt as Timestamp).seconds - (a.createdAt as Timestamp).seconds);
+  const allOrders = [...orders].sort((a, b) => (b.createdAt as Timestamp).seconds - (a.createdAt as Timestamp).seconds);
   
   const totalRevenue = orders.reduce((acc, order) => order.status === 'Completed' ? acc + order.total : acc, 0);
   const completedOrdersCount = orders.filter(order => order.status === 'Completed').length;
@@ -553,5 +553,7 @@ export default function DashboardPage() {
     </>
   )
 }
+
+    
 
     
