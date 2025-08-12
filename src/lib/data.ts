@@ -85,16 +85,5 @@ export type DailyClosing = {
     cancelledItems: OrderItem[];
     totalCancelledValue: number;
 }
-
-// Mock data for testing login profiles
-export const testUsers: Omit<User, 'id'>[] = [
-    { name: 'Admin', role: 'Admin', email: 'admin@namata.com' },
-    { name: 'Chefe', role: 'Chefe', email: 'chefe@namata.com' },
-    { name: 'Portaria', role: 'Portaria', email: 'portaria@namata.com' },
-    { name: 'Garçom', role: 'Garçom', email: 'garcom@namata.com' },
-    { name: 'Bar', role: 'Bar', email: 'bar@namata.com' },
-    { name: 'Cozinha', role: 'Cozinha', email: 'cozinha@namata.com' },
-    { name: 'Caixa', role: 'Caixa', email: 'caixa@namata.com' },
-];
-
     
+

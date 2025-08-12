@@ -10,21 +10,24 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/hooks/use-auth.tsx"
 import { useToast } from '@/hooks/use-toast';
-import { testUsers, type User } from '@/lib/data';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { toast } = useToast();
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
   React.useEffect(() => {
-    // If user is already logged in, redirect to the appropriate dashboard.
     if (user) {
       if (user.role === 'Admin') {
         router.push("/dashboard/admin");
@@ -46,24 +49,31 @@ export default function LoginPage() {
   }, [user, router]);
 
 
-  const handleLogin = async (testUser: Omit<User, 'id'>) => {
+  const handleLogin = async () => {
+    if (!email || !password) {
+        toast({
+            variant: "destructive",
+            title: "Campos obrigatórios",
+            description: "Por favor, preencha o e-mail e a senha.",
+        });
+        return;
+    }
     setIsLoggingIn(true);
     try {
-      await signInWithEmailAndPassword(auth, testUser.email, '123456');
-      toast({ title: `Bem-vindo, ${testUser.name}!` });
-      // Redirect logic is in useEffect
+      await signInWithEmailAndPassword(auth, email, password);
+      // O hook useAuth irá detectar a mudança e redirecionar.
     } catch (error: any) {
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
              toast({
                 variant: "destructive",
                 title: "Falha na autenticação",
-                description: "Usuário ou senha inválidos. Contate o administrador.",
+                description: "Usuário ou senha inválidos. Verifique suas credenciais.",
             });
         } else {
              toast({
                 variant: "destructive",
                 title: "Erro de Autenticação",
-                description: error.message,
+                description: "Ocorreu um erro inesperado. Tente novamente.",
             });
         }
     } finally {
@@ -87,25 +97,41 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo />
           </div>
-          <CardTitle className="text-2xl font-bold">Entrar como</CardTitle>
+          <CardTitle className="text-2xl font-bold">Acessar Sistema</CardTitle>
           <CardDescription>
-            Selecione um perfil para testar a aplicação.
+            Use seu e-mail e senha para entrar.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-2">
-                {testUsers.map((testUser) => (
-                    <Button 
-                        key={testUser.email} 
-                        className="w-full" 
-                        onClick={() => handleLogin(testUser)}
-                        disabled={isLoggingIn}
-                    >
-                        {testUser.name} ({testUser.role})
-                    </Button>
-                ))}
+            <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="seu@email.com" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoggingIn}
+                />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="Sua senha" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoggingIn}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
             </div>
         </CardContent>
+        <CardFooter>
+            <Button className="w-full" onClick={handleLogin} disabled={isLoggingIn}>
+                {isLoggingIn ? "Entrando..." : "Entrar"}
+            </Button>
+        </CardFooter>
       </Card>
     </div>
   )
