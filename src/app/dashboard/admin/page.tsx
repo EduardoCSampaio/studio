@@ -29,11 +29,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PlusCircle, Trash2 } from "lucide-react"
+import { PlusCircle, Trash2, Users } from "lucide-react"
 import { type User, UserRole } from "@/lib/data"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, query, where, doc, deleteDoc, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 
@@ -41,7 +41,11 @@ export default function AdminPage() {
   const [chefs, setChefs] = React.useState<User[]>([])
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [isViewTeamDialogOpen, setViewTeamDialogOpen] = React.useState(false);
   const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
+  const [selectedChefe, setSelectedChefe] = React.useState<User | null>(null);
+  const [teamMembers, setTeamMembers] = React.useState<User[]>([]);
+  const [isTeamLoading, setIsTeamLoading] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
 
@@ -99,7 +103,6 @@ export default function AdminPage() {
             description: `${newChefe.name} foi adicionado. Agora, crie a conta de autenticação para este e-mail no console do Firebase.`,
         });
         
-        // Reset form
         setNewChefe({ name: "", email: "", password: "" });
         setAddDialogOpen(false);
 
@@ -144,6 +147,33 @@ export default function AdminPage() {
     }
   }
 
+  const handleViewTeam = async (chefe: User) => {
+    setSelectedChefe(chefe);
+    setViewTeamDialogOpen(true);
+    setIsTeamLoading(true);
+    setTeamMembers([]);
+
+    try {
+        const usersCol = collection(db, 'users');
+        const q = query(usersCol, where("chefeId", "==", chefe.id));
+        const querySnapshot = await getDocs(q);
+        const teamList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as User[];
+        setTeamMembers(teamList);
+    } catch (error) {
+        console.error("Error fetching team members: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao buscar equipe",
+            description: "Não foi possível carregar os funcionários deste Chefe."
+        });
+    } finally {
+        setIsTeamLoading(false);
+    }
+  }
+
   return (
     <>
       <div className="space-y-6">
@@ -185,7 +215,11 @@ export default function AdminPage() {
                       <Badge variant={'default'}>{user.role}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(user)}>
+                        <Button variant="ghost" size="icon" title="Ver Equipe" onClick={() => handleViewTeam(user)}>
+                            <Users className="h-4 w-4 text-primary" />
+                            <span className="sr-only">Ver Equipe</span>
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Remover Chefe" onClick={() => openDeleteDialog(user)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <span className="sr-only">Remover Chefe</span>
                         </Button>
@@ -269,6 +303,56 @@ export default function AdminPage() {
                 <Button onClick={handleDeleteChefe} variant="destructive" disabled={isLoading}>
                     {isLoading ? "Removendo..." : "Sim, Remover"}
                 </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewTeamDialogOpen} onOpenChange={setViewTeamDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Equipe de {selectedChefe?.name}</DialogTitle>
+                <DialogDescription>
+                    Lista de todos os funcionários cadastrados para este Chefe.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                {isTeamLoading ? (
+                    <p>Carregando equipe...</p>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Email (Login)</TableHead>
+                                <TableHead>Cargo</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {teamMembers.length > 0 ? (
+                                teamMembers.map((member) => (
+                                    <TableRow key={member.id}>
+                                        <TableCell className="font-medium">{member.name}</TableCell>
+                                        <TableCell>{member.email}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={'secondary'}>{member.role}</Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">
+                                        Este Chefe ainda não possui funcionários.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
+            </div>
+            <DialogFooter>
+                 <DialogClose asChild>
+                    <Button variant="outline">Fechar</Button>
+                </DialogClose>
             </DialogFooter>
         </DialogContent>
       </Dialog>
